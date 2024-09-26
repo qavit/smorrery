@@ -35,17 +35,14 @@
         let sun, mercury, venus, earth, mars;
         let orbitLines = [];
 
-        const apolloData = [
-            { spkid: 20001566, full_name: "1566 Icarus (1949 MA)", diameter: 1.0, e: 0.8270, a: 1.078, i: 22.80, om: 87.95, w: 31.43, ma: 160.86 },
-            { spkid: 20001620, full_name: "1620 Geographos (1951 RA)", diameter: 2.56, e: 0.3356, a: 1.246, i: 13.34, om: 337.15, w: 277.01, ma: 289.36 },
-            // Additional Apollo asteroid data...
-        ];
+        // Use empty array to store data from API
+        let apolloData = [];
 
         const planetColors = {
-            mercury: 0xFF00FF, // magenta
-            venus: 0xFFFF00,   // yellow
-            earth: 0x00FFFF,   // cyan
-            mars: 0xFF0000     // red
+            mercury: 0xFF00FF,
+            venus: 0xFFFF00,
+            earth: 0x00FFFF,
+            mars: 0xFF0000
         };
 
         function init() {
@@ -72,7 +69,6 @@
             scene.add(pointLight);
 
             createCelestialBodies();
-            createApolloAsteroidOrbits();
             createGUI();
 
             window.addEventListener('resize', onWindowResize, false);
@@ -119,7 +115,7 @@
         }
 
         function createAsteroidOrbit(asteroid, color) {
-            const a = asteroid.a * 20; // Scale up the semi-major axis
+            const a = asteroid.a * 20;
             const e = asteroid.e;
             const b = a * Math.sqrt(1 - e * e);
 
@@ -168,7 +164,28 @@
             renderer.render(scene, camera);
         }
 
+        // Fetch data from API and start rendering the orbits
+        async function fetchData() {
+            const response = await fetch('/api/sbdb_query');
+            const data = await response.json();
+
+            // Map API data to apolloData format
+            apolloData = data.data.map(d => ({
+                full_name: d[0],
+                epoch: d[1],
+                e: parseFloat(d[2]),
+                a: parseFloat(d[3]),
+                i: parseFloat(d[5]),
+                om: parseFloat(d[6]),
+                w: parseFloat(d[7])
+            }));
+
+            createApolloAsteroidOrbits();
+        }
+
+        // Initialize and fetch data
         init();
+        fetchData();
         animate();
     </script>
 </body>

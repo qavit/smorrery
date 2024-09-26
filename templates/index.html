@@ -1,61 +1,60 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ locale }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IEO Asteroids</title>
-    <!-- 引入 DataTables 和 jQuery -->
+    <title>{{ _('Welcome to NEO Database') }}</title>
+    <!-- import DataTables and jQuery -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css">
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
 </head>
 <body>
-    <h1>IEO (Atira-class) 小行星資料</h1>
-    
-    <!-- 表格顯示資料 -->
+    <h1>{{ _('Near-Earth Objects (NEOs)') }}</h1>
+
     <table id="smallBodiesTable" class="display">
         <thead>
             <tr>
-                <th>名稱</th>
-                <th>歷元 (epoch)</th>
-                <th>離心率 (e)</th>
-                <th>半長軸 (a, AU)</th>
-                <th>近日點 (q, AU)</th>
-                <th>軌道傾角 (i, 度)</th>
-                <th>升交點經度 (om, 度)</th>
-                <th>近日點引數 (w, 度)</th>
+                <th>{{ _('Name') }}</th>
+                <th>{{ _('Epoch') }}</th>
+                <th>{{ _('Eccentricity (e)') }}</th>
+                <th>{{ _('Semi-major Axis (a, AU)') }}</th>
+                <th>{{ _('Perihelion (q, AU)') }}</th>
+                <th>{{ _('Inclination (i, degrees)') }}</th>
+                <th>{{ _('Longitude of Ascending Node (om, degrees)') }}</th>
+                <th>{{ _('Argument of Perihelion (w, degrees)') }}</th>
             </tr>
         </thead>
         <tbody></tbody>
     </table>
 
     <script>
-        // 取得 API 資料並顯示在表格中
+        // Fetch the API data and display it in the table
         async function loadData() {
-            const response = await fetch('/api/small_bodies');
+            const response = await fetch('/api/sbdb_query');
             const data = await response.json();
 
             const table = $('#smallBodiesTable').DataTable();
 
-            // 遍歷 data 內的每一行數據
+            // Iterate over each row in the data
             data.data.forEach(row => {
-                // 添加每一行的資料到表格中
+                // Add each row of data to the table
                 table.row.add([
                     row[0],  // full_name
                     row[1],  // epoch
-                    row[2],  // e (離心率)
-                    row[3],  // a (半長軸, AU)
-                    row[4],  // q (近日點, AU)
-                    row[5],  // i (軌道傾角)
-                    row[6],  // om (升交點經度)
-                    row[7]   // w (近日點引數)
+                    row[2],  // e (Eccentricity)
+                    row[3],  // a (Semi-major Axis, AU)
+                    row[4],  // q (Perihelion, AU)
+                    row[5],  // i (Inclination)
+                    row[6],  // om (Longitude of Ascending Node)
+                    row[7]   // w (Argument of Perihelion)
                 ]).draw();
             });
         }
 
         $(document).ready(function() {
             $('#smallBodiesTable').DataTable();
-            loadData(); // 呼叫後端 API 並加載資料
+            loadData(); // Call the API and load data
         });
     </script>
 </body>
