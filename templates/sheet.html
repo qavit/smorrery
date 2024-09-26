@@ -23,6 +23,7 @@
                 <th>{{ _('Inclination (i, degrees)') }}</th>
                 <th>{{ _('Longitude of Ascending Node (om, degrees)') }}</th>
                 <th>{{ _('Argument of Perihelion (w, degrees)') }}</th>
+                <th>{{ _('Mean Anomaly (M, degrees)') }}</th>
             </tr>
         </thead>
         <tbody></tbody>
@@ -47,7 +48,8 @@
                     row[4],  // q (Perihelion, AU)
                     row[5],  // i (Inclination)
                     row[6],  // om (Longitude of Ascending Node)
-                    row[7]   // w (Argument of Perihelion)
+                    row[7],   // w (Argument of Perihelion)
+                    row[8]   // M (Mean Anomaly)
                 ]).draw();
             });
         }

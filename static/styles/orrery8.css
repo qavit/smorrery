@@ -1,0 +1,129 @@
+body {
+    margin: 0;
+    overflow: hidden;
+}
+
+#info {
+    position: absolute;
+    top: 10px;
+    width: 100%;
+    text-align: center;
+    color: white;
+    font-family: Arial, sans-serif;
+    pointer-events: none;
+}
+
+.label {
+    color: #ffffff;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    padding: 2px;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+#timeControl {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    color: white;
+    font-family: Arial, sans-serif;
+    z-index: 1000;
+}
+
+.control-button {
+    background-color: rgba(0, 0, 0, 0.5);
+    border: none;
+    color: white;
+    padding: 10px 15px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.control-button:hover {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.control-button:active {
+    background-color: rgba(0, 0, 0, 0.9);
+}
+
+#playPause, #reverse {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#currentDate, #julianDate {
+    min-width: 200px;
+    text-align: center;
+}
+
+#speedControl {
+    display: flex;
+    align-items: center;
+}
+
+#speedSlider {
+    width: 100px;
+}
+
+.dg.main .close-button {
+    display: none;
+}
+
+.dg.main .property-name {
+    color: white !important;
+}
+
+#checkboxes {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 1000;
+}
+
+.custom-checkbox {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.custom-checkbox input[type="checkbox"] {
+    margin-right: 5px;
+    cursor: pointer;
+    opacity: 1;
+    width: auto;
+    height: auto;
+}
+
+.custom-checkbox label {
+    color: white;
+    font-family: Arial, sans-serif;
+    cursor: pointer;
+}
+
+#reverse .fas {
+    transition: transform 0.3s ease;
+}
+
+#reverse.reversed .fas {
+    transform: scaleX(-1);
+}

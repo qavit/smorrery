@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2024-09-26 14:24+0800\n"
+"POT-Creation-Date: 2024-09-26 15:20+0800\n"
 "PO-Revision-Date: 2024-09-26 14:28+0800\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -18,43 +18,47 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.16.0\n"
 
-#: app.py:60 templates/index.html:6
+#: templates/sheet.html:6
 msgid "Welcome to NEO Database"
 msgstr "Welcome to NEO Database"
 
-#: templates/index.html:13
+#: templates/sheet.html:13
 msgid "Near-Earth Objects (NEOs)"
 msgstr "Near-Earth Objects (NEOs)"
 
-#: templates/index.html:18
+#: templates/sheet.html:18
 msgid "Name"
 msgstr "Name"
 
-#: templates/index.html:19
+#: templates/sheet.html:19
 msgid "Epoch"
 msgstr "Epoch"
 
-#: templates/index.html:20
+#: templates/sheet.html:20
 msgid "Eccentricity (e)"
 msgstr "Eccentricity (e)"
 
-#: templates/index.html:21
+#: templates/sheet.html:21
 msgid "Semi-major Axis (a, AU)"
 msgstr "Semi-major Axis (a, AU)"
 
-#: templates/index.html:22
+#: templates/sheet.html:22
 msgid "Perihelion (q, AU)"
 msgstr "Perihelion (q, AU)"
 
-#: templates/index.html:23
+#: templates/sheet.html:23
 msgid "Inclination (i, degrees)"
 msgstr "Inclination (i, degrees)"
 
-#: templates/index.html:24
+#: templates/sheet.html:24
 msgid "Longitude of Ascending Node (om, degrees)"
 msgstr "Longitude of Ascending Node (om, degrees)"
 
-#: templates/index.html:25
+#: templates/sheet.html:25
 msgid "Argument of Perihelion (w, degrees)"
 msgstr "Argument of Perihelion (w, degrees)"
+
+#: templates/sheet.html:26
+msgid "Mean Anomaly (M, degrees)"
+msgstr "Mean Anomaly (M, degrees)"
 
