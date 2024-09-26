@@ -1,3 +1,7 @@
+const J2000_DATE = new Date(Date.UTC(2000, 0, 1, 12, 0, 0)); // 2000-01-01 12:00 UTC
+const MIN_DATE = new Date(1900, 0, 1);
+const MAX_DATE = new Date(2100, 11, 31);
+
 let scene, camera, renderer, labelRenderer, controls;
 let xArrow, yArrow, zArrow, eclipticPlane; 
 let sun, sunLabel;
@@ -6,16 +10,40 @@ let planetLabels = [];
 let isPlaying = true;
 let timeScale = 1;
 let timeDirection = 1;
-let stopWatch = 0;
 let spaceScale = 20;
-
-const J2000_DATE = new Date(Date.UTC(2000, 0, 1, 12, 0, 0)); // 2000-01-01 12:00 UTC
-const maxTimeAcceleration = 2;
-const textureLoader = new THREE.TextureLoader();
-const MIN_DATE = new Date(1900, 0, 1);
-const MAX_DATE = new Date(2100, 11, 31);
-
 let currentDate = J2000_DATE; 
+
+// Fetch sbdb_data from the API endpoint
+function fetchSbdbData() {
+    fetch('/api/sbdb_query')
+        .then(response => response.json())
+        .then(data => {
+            console.log(data);  // 檢查 API 回傳的物件
+
+            const results = data.data;
+
+            if (Array.isArray(results)) {
+                results.forEach(smallBody => {
+                    const full_name = smallBody[0];
+                    const a = parseFloat(smallBody[3]);
+                    const e = parseFloat(smallBody[2]);
+                    const i = parseFloat(smallBody[5]);
+                    const om = parseFloat(smallBody[6]);
+                    const w = parseFloat(smallBody[7]);
+                    const ma = parseFloat(smallBody[8]);
+
+                    console.log(full_name);  // Log each small body's full name
+
+                    createPlanet(full_name, 0.1, a*spaceScale, e, i, om, w, 0xfffff);
+                });
+            } else {
+                console.error('Error: results is not an array');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching sbdb_data:', error);
+        });
+}
 
 function formatDate(date) {
     return date.toISOString().split('T')[0];
@@ -61,11 +89,14 @@ function init() {
 
     addAxesArrows(); // initially invisible
     addEclipticPlane(); // initially invisible
+    fetchSbdbData();
     createCelestialBodies();
     addSunLight();
     addAmbientLight();
     setupControls();
     setupTimeControls();
+
+    
 
     animate(); 
 
@@ -79,7 +110,6 @@ function init() {
         controls.enabled = true;
     });
 }
-
 
 function addAxesArrows() {
     const arrowLength = spaceScale;
@@ -149,7 +179,6 @@ function createCelestialBodies() {
             planet.i,               // Inclination (i)
             planet.om,              // Longitude of Ascending Node (Ω)
             planet.varpi,           // Longitude of Perihelion (ϖ)
-            planet.ma,              // Mean Anomaly (M)
             planet.color);
         planet.mesh = planetMesh;
         planet.path = [];
@@ -173,7 +202,7 @@ function applyOrbitalRotations(rotationMatrix, i, Omega, varpi, activated=true) 
     rotationMatrix.multiply(omegaMatrix);
 }
 
-function createPlanet(name, radius, a, e, i, Omega, varpi, M, color) {
+function createPlanet(name, radius, a, e, i, Omega, varpi, color) {
     const geometry = new THREE.SphereGeometry(radius, 32, 32);
     const material = new THREE.MeshStandardMaterial({
         color: color,
@@ -506,4 +535,3 @@ function solveKeplerEquation(e, M) {
 }
 
 init();
-animate();

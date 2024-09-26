@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2024-09-26 15:20+0800\n"
+"POT-Creation-Date: 2024-09-27 03:09+0800\n"
 "PO-Revision-Date: 2024-09-26 14:28+0800\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_Hant_TW\n"
@@ -47,18 +47,18 @@ msgid "Perihelion (q, AU)"
 msgstr "近日點 (q, AU)"
 
 #: templates/sheet.html:23
-msgid "Inclination (i, degrees)"
+msgid "Inclination (i, deg)"
 msgstr "軌道傾角 (i, 度)"
 
 #: templates/sheet.html:24
-msgid "Longitude of Ascending Node (om, degrees)"
-msgstr "升交點黃經 (om, 度)"
+msgid "Longitude of Ascending Node (Ω, deg)"
+msgstr "升交點黃經 (Ω, 度)"
 
 #: templates/sheet.html:25
-msgid "Argument of Perihelion (w, degrees)"
-msgstr "近日點幅角 (w, 度)"
+msgid "Argument of Perihelion (ω, deg)"
+msgstr "近日點幅角 (ω, 度)"
 
 #: templates/sheet.html:26
-msgid "Mean Anomaly (M, degrees)"
+msgid "Mean Anomaly (M, deg)"
 msgstr "平近點角 (M, 度)"
 

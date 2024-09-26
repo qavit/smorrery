@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ _('Welcome to NEO Database') }}</title>
+    
     <!-- import DataTables and jQuery -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css">
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
@@ -21,8 +22,8 @@
                 <th>{{ _('Semi-major Axis (a, AU)') }}</th>
                 <th>{{ _('Perihelion (q, AU)') }}</th>
                 <th>{{ _('Inclination (i, degrees)') }}</th>
-                <th>{{ _('Longitude of Ascending Node (om, degrees)') }}</th>
-                <th>{{ _('Argument of Perihelion (w, degrees)') }}</th>
+                <th>{{ _('Longitude of Ascending Node (Ω, degrees)') }}</th>
+                <th>{{ _('Argument of Perihelion (ω, degrees)') }}</th>
                 <th>{{ _('Mean Anomaly (M, degrees)') }}</th>
             </tr>
         </thead>
@@ -48,7 +49,7 @@
                     row[4],  // q (Perihelion, AU)
                     row[5],  // i (Inclination)
                     row[6],  // om (Longitude of Ascending Node)
-                    row[7],   // w (Argument of Perihelion)
+                    row[7],  // w (Argument of Perihelion)
                     row[8]   // M (Mean Anomaly)
                 ]).draw();
             });
