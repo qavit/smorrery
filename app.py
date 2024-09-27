@@ -38,7 +38,7 @@ def sbdb_query():
     params = {
         'fields': 'full_name,epoch,e,a,q,i,om,w,ma',  # Fields to query
         'sb-group': 'neo',  # NEOs-only (neo) or PHAs-only (pha)
-        'limit': 20  # Limit results to 20
+        'limit': 5  # Limit results to 20
     }
     # https://ssd-api.jpl.nasa.gov/sbdb_query.api?fields=full_name,epoch,e,a,q,i,om,w,ma&sb-group=neo&limit=20
 
