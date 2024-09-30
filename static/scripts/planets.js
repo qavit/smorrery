@@ -13,7 +13,8 @@ const planets = [
         ma: 174.796,            // Mean Anomaly (M), deg
         epoch: J2000,
         color: 0xD3D3D3, //LightGray
-        radius: 0.383           // Radius (R), of Earth radius
+        radius: 0.383,           // Radius (R), of Earth radius
+        category: 'planet'
     },
     {
         name: 'Venus',
@@ -25,7 +26,8 @@ const planets = [
         ma: 50.115,
         epoch: J2000,
         color: 0xFFFFE0, // LightYellow
-        radius: 0.949
+        radius: 0.949,
+        category: 'planet'
     },
     {
         name: 'Earth',
@@ -37,7 +39,8 @@ const planets = [
         ma: 100.464,
         epoch: J2000,
         color: 0x00BFFF, // DeepSkyBlue
-        radius: 1
+        radius: 1,
+        category: 'planet'
     },
     {
         name: 'Mars',
@@ -49,7 +52,8 @@ const planets = [
         ma: 355.453,
         epoch: J2000,
         color: 0xCD5C5C, // IndianRed
-        radius: 0.532
+        radius: 0.532,
+        category: 'planet'
     },
     {
         name: 'Jupiter',
@@ -61,7 +65,8 @@ const planets = [
         ma: 19.650,
         epoch: J2000,
         color: 0xCD853F, // Peru
-        radius: 11.21
+        radius: 11.21,
+        category: 'planet'
     },
     {
         name: 'Saturn',
@@ -73,7 +78,8 @@ const planets = [
         ma: 317.020,
         epoch: J2000,
         color: 0xF0E68C, // Khaki
-        radius: 9.45
+        radius: 9.45,
+        category: 'planet'
     },
     {
         name: 'Uranus',
@@ -85,7 +91,8 @@ const planets = [
         ma: 142.238,
         epoch: J2000,
         color: 0xE0FFFF, // LightCyan
-        radius: 4.01
+        radius: 4.01,
+        category: 'planet'
     },
     {
         name: 'Neptune',
@@ -97,7 +104,8 @@ const planets = [
         ma: 256.228,
         epoch: J2000,
         color: 0x4169E1, // RoyalBlue
-        radius: 3.88
+        radius: 3.88,
+        category: 'planet'
     }
 ];
 
