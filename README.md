@@ -1,5 +1,7 @@
 # Smorrery: a simple orrery app
 
+![](https://i.imgur.com/Ptd8Wc0.png)
+
 ## Description
 
 1. The **index page** offers a streamlined interface for viewing [Near-Earth Object](https://en.wikipedia.org/wiki/Near-Earth_object) (NEO) data retrieved from NASA's SBDB API.
