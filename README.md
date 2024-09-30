@@ -1,4 +1,4 @@
-# Smorrery: for NEO Orrery
+# Smorrery: a simple orrery app
 
 ## Description
 
