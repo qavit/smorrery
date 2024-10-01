@@ -1,6 +1,8 @@
 const J2000_DATE = new Date(Date.UTC(2000, 0, 1, 12, 0, 0)); // 2000-01-01 12:00 UTC
 const MIN_DATE = new Date(1900, 0, 1);
 const MAX_DATE = new Date(2100, 11, 31);
+const EARTH_SIDEREAL_YEAR = 365.256363004 * 86400 * 1000; // https://hpiers.obspm.fr/eop-pc/models/constants.html
+const SWEPT_AREAS_AMOUNT = 6;
 
 
 let scene, camera, renderer, labelRenderer, controls;
@@ -434,6 +436,10 @@ function createOrbitingObject(obj) {
     obj.trace = [];
     obj.T = Math.sqrt(obj.a ** 3);  // Orbital period; using Kepler's 3rd Law
 
+    obj.sweptAreas = [];
+    obj.lastTraceIndex = 0;
+    obj.lastSweptTimestamp = new Date(currentDate);
+
     console.log('Created ' + obj.name);
 }
 
@@ -501,6 +507,40 @@ function createOrbitLine(obj) {
     objectOrbits.push(orbitContainer);
 }
 
+let color_flag = true;
+function createSweptArea(planet, points) {
+  const material = new THREE.MeshBasicMaterial({
+    color: color_flag ? 0xff0000 : 0x0000ff,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.5,
+  });
+  color_flag = !color_flag;
+
+  const shape = new THREE.Shape();
+  shape.moveTo(0, 0);
+  points.forEach(function (point) {
+    shape.lineTo(point.x, point.z);
+  });
+  shape.lineTo(0, 0);
+  const geometry = new THREE.ShapeGeometry(shape);
+  geometry.rotateX(Math.PI / 2);
+  const sweptArea = new THREE.Mesh(geometry, material);
+  const container = new THREE.Object3D();
+  const rotationMatrix = new THREE.Matrix4();
+  applyOrbitalRotations(rotationMatrix, planet.i, planet.om, planet.varpi);
+  // container.applyMatrix4(rotationMatrix)
+  container.visible = document.getElementById("showSweptArea").checked;
+  scene.add(container);
+
+  container.add(sweptArea);
+  planet.sweptAreas.push(container);
+  if (planet.sweptAreas.length >= SWEPT_AREAS_AMOUNT) {
+    const item = planet.sweptAreas.shift();
+    scene.remove(item);
+  }
+}
+
 function addLabel(object, name) {
     const labelDiv = document.createElement('div');
     labelDiv.className = 'label';
@@ -543,6 +583,7 @@ function setupControls() {
     const showLabelsCheckbox = document.getElementById('showLabels');
     const showAxesCheckbox = document.getElementById('showAxes');
     const showEclipticCheckbox = document.getElementById('showEcliptic');
+    const showSweptAreaCheckbox = document.getElementById('showSweptArea');
     const clearTracesButton = document.getElementById('clearTraces');
 
     // Toggle visibility of orbits
@@ -568,6 +609,17 @@ function setupControls() {
     // Toggle visibility of ecliptic plane
     showEclipticCheckbox.addEventListener('change', (event) => {
         toggleEclipticPlane(event.target.checked); 
+    });
+
+    // Toggle visibility of swept areas
+    showSweptAreaCheckbox.addEventListener('change', (event) => {
+      celestialObjects.forEach(obj => {
+        if(obj.sweptAreas) {
+          obj.sweptAreas.forEach(area => {
+            area.visible = event.target.checked;
+          });
+        }
+      });
     });
 
     // Clear all traces
@@ -716,6 +768,11 @@ function animate() {
     labelRenderer.render(scene, camera);
 }
 
+function getAngle(point) {
+  if (point.z > 0)
+    return Math.PI * 2 - point.angleTo(new THREE.Vector3(1, 0, 0));
+  return point.angleTo(new THREE.Vector3(1, 0, 0));
+}
 function updatePositions() {
     const currentJulianDate = calculateJulianDate(currentDate);
     const yearSinceJ2000 = (currentJulianDate - J2000) / 365.25;
@@ -745,6 +802,33 @@ function updatePositions() {
         obj.container.updateMatrixWorld(true);  // 確保更新應用到場景
         obj.label.position.set(positionVector.x, positionVector.y + obj.radius + 0.5, positionVector.z);
 
+        if (
+          currentDate - obj.lastSweptTimestamp >=
+          (EARTH_SIDEREAL_YEAR * obj.T) / SWEPT_AREAS_AMOUNT
+        ) {
+          if (obj.name == "Mercury") {
+            obj.lastSweptTimestamp = new Date(currentDate);
+            let points = obj.trace.slice(
+              obj.lastTraceIndex,
+              obj.trace.length
+            );
+            // const path = new THREE.Path()
+            // path.absellipse(
+            //     0,
+            //     0,
+            //     obj.a * spaceScale,
+            //     obj.a * Math.sqrt(1 - obj.e ** 2) * spaceScale,
+            //     getAngle(points.at(0)),
+            //     getAngle(points.at(-1)),
+            //     false,
+            //     0
+            //   );
+            // createSweptArea(obj, path.getPoints());
+            createSweptArea(obj, points);
+    
+            obj.lastTraceIndex = obj.trace.length - 1;
+          }
+        }
         // Add a segment to the trace
         obj.trace.push(new THREE.Vector3(positionVector.x, positionVector.y, positionVector.z));
         drawTrace(obj);
