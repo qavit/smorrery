@@ -8,7 +8,7 @@ app = Flask(__name__)
 # Set default locale and supported locales
 app.config['BABEL_DEFAULT_LOCALE'] = 'en'
 app.config['BABEL_SUPPORTED_LOCALES'] = ['en', 'zh_TW']
-
+# sbdb_data = None
 
 # Function to determine the user's preferred language
 def get_locale():
