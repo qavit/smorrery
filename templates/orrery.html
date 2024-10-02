@@ -27,11 +27,11 @@
         <button id="setSpeedOne" class="control-button">1x</button>
         <div id="speedControl">
             <label for="speedSlider">Speed:</label>
-            <input type="range" id="speedSlider" min="-1" max="1" step="0.01" value="0">
+            <input type="range" id="speedSlider" min="-2" max="2" step="0.01" value="0">
             <span id="speedValue">1.00</span>
         </div>
-        <span id="currentDate"></span>
-        <span id="julianDate"></span>
+        <span id="currentDateDisplay"></span>
+        <span id="julianDateDisplay"></span>
     </div>
 
     <div id="checkboxes">
@@ -63,9 +63,8 @@
 
 	<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
-
-    <script src="{{ url_for('static', filename='scripts/planets.js') }}"></script>
-	<script src="{{ url_for('static', filename='scripts/orrery.js') }}"></script>
-
+	
+    <script type="module" src="{{ url_for('static', filename='scripts/orrery.js') }}"></script>
+    
 </body>
 </html>

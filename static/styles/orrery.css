@@ -68,7 +68,7 @@ body {
     align-items: center;
 }
 
-#currentDate, #julianDate {
+#currentDateDisplay, #julianDateDisplay {
     min-width: 200px;
     text-align: center;
 }
