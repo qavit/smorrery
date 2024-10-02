@@ -1,4 +1,5 @@
-import { spaceScale } from './orrery.js';
+import { spaceScale, currentDate, scene } from './orrery.js';
+import { createSweptArea, EARTH_SIDEREAL_YEAR, SWEPT_AREAS_AMOUNT } from './Education.js';
 
 const J2000 = 2451545.0;
 const radiusScale = 0.5;
@@ -78,4 +79,32 @@ export function updateObjectPosition(object, currentJulianDate) {
 
     // Add a segment to the trace
     trace.push(new THREE.Vector3(positionVector.x, positionVector.y, positionVector.z));
+
+    if (
+        currentDate - object.lastSweptTimestamp >=
+        (EARTH_SIDEREAL_YEAR * object.period) / SWEPT_AREAS_AMOUNT
+    ) {
+        if (object.name == "Mercury") {
+            object.lastSweptTimestamp = new Date(currentDate);
+            let points = trace.slice(
+                object.lastTraceIndex,
+                trace.length
+            );
+            // const path = new THREE.Path()
+            // path.absellipse(
+            //     0,
+            //     0,
+            //     obj.a * spaceScale,
+            //     obj.a * Math.sqrt(1 - obj.e ** 2) * spaceScale,
+            //     getAngle(points.at(0)),
+            //     getAngle(points.at(-1)),
+            //     false,
+            //     0
+            //   );
+            // createSweptArea(obj, path.getPoints());
+            createSweptArea(scene, object, points);
+    
+            object.lastTraceIndex = trace.length - 1;
+        }
+    }
 }

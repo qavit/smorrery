@@ -6,7 +6,8 @@ const J2000_DATE = new Date(Date.UTC(2000, 0, 1, 12, 0, 0)); // 2000-01-01 12:00
 const MIN_DATE = new Date(1900, 0, 1);
 const MAX_DATE = new Date(2100, 11, 31);
 
-let scene, camera, renderer, labelRenderer, controls;
+export let scene;
+let camera, renderer, labelRenderer, controls;
 let sun;
 let smallBodiesData = []; // 行星、小天體數據陣列
 let orbitingObjects = [];
@@ -16,7 +17,7 @@ let backgroundSphere, axesArrows, eclipticPlane;
 let isPlaying = true;
 let timeScale = 1;
 let timeDirection = 1;
-let currentDate = J2000_DATE;
+export let currentDate = J2000_DATE;
 let showLabels = false;
 
 export let spaceScale = 20;
@@ -258,6 +259,7 @@ export function setupUIControls(celestialObjects) {
     const showAxesCheckbox = document.getElementById('showAxes');
     const showEclipticCheckbox = document.getElementById('showEcliptic');
     const clearTracesButton = document.getElementById('clearTraces');
+    const showSweptAreaCheckbox = document.getElementById('showSweptArea');
 
     // Toggle visibility of orbits
     showOrbitsCheckbox.addEventListener('change', (event) => {
@@ -288,6 +290,15 @@ export function setupUIControls(celestialObjects) {
         eclipticPlane.visible = event.target.checked; 
     });
 
+    showSweptAreaCheckbox.addEventListener('change', (event) => {
+        celestialObjects.forEach(obj => {
+            if(obj.sweptAreas) {
+                obj.sweptAreas.forEach(area => {
+                    area.visible = event.target.checked;
+                });
+            }
+        });
+    });
     // Clear all traces
     clearTracesButton.addEventListener('click', clearTraces);
 }
@@ -486,6 +497,13 @@ function clearTraces() {
     celestialObjects.forEach(object => {
         // Clear the path array
         object.trace = [];
+
+        while (object.sweptAreas.length) {
+            scene.remove(object.sweptAreas.shift())
+        }
+
+        object.lastTraceIndex = 0;
+        object.lastSweptTimestamp = new Date(currentDate)
 
         // Remove the existing path line from the scene
         if (object.traceLine) {
