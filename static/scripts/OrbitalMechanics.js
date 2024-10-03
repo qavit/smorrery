@@ -1,3 +1,4 @@
+import { createSweptArea, EARTH_SIDEREAL_YEAR, SWEPT_AREAS_AMOUNT } from './Education.js';
 import { sunData, spaceScale } from './Resources.js';
 import { printQuantity } from './Tools.js';
 
@@ -86,8 +87,34 @@ export function updateObjectPosition(object, currentJulianDate) {
     container.updateMatrixWorld(true);  // Make sure the changes apply to the scene
     label.position.set(position.x, position.y + radius + 0.5, position.z);
 
-    // Add a segment to the trace
-    trace.push(new THREE.Vector3(position.x, position.y, position.z));
+    
+    if (
+        currentDate - object.lastSweptTimestamp >=
+        (EARTH_SIDEREAL_YEAR * object.period) / SWEPT_AREAS_AMOUNT
+    ) {
+        if (object.name == "Mercury") {
+            object.lastSweptTimestamp = new Date(currentDate);
+            let points = trace.slice(
+                object.lastTraceIndex,
+                trace.length
+            );
+            // const path = new THREE.Path()
+            // path.absellipse(
+            //     0,
+            //     0,
+            //     obj.a * spaceScale,
+            //     obj.a * Math.sqrt(1 - obj.e ** 2) * spaceScale,
+            //     getAngle(points.at(0)),
+            //     getAngle(points.at(-1)),
+            //     false,
+            //     0
+            //   );
+            // createSweptArea(obj, path.getPoints());
+            createSweptArea(scene, object, points);
+    
+            object.lastTraceIndex = trace.length - 1;
+        }
+    }
 }
 
 export function calcOrbitalElements(position, velocity, verbose = true) {
@@ -151,5 +178,3 @@ export function calcOrbitalElements(position, velocity, verbose = true) {
         n_vec: n_vec
     };
 }
-
-

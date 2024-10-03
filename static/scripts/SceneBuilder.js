@@ -15,12 +15,20 @@ export class CelestialBody {
         this.container = new THREE.Object3D();
         this.label = null;
         this.orbit = null;
-        this.trace = [];
-
-        if (textures) this.texturesPath = this.textures[this.name.toUpperCase()];
         
+        if (textures) {
+          this.texturesPath = this.textures[this.name.toUpperCase()];
+        }
+
+        // For Education Module Orbital period (Kepler's 2rd Law)
+        this.period = Math.sqrt(this.orbitalElements.a ** 3) || 1; 
+        this.sweptAreas = [];
+        this.lastTraceIndex = 0;
+        this.lastSweptTimestamp = new Date(Date.UTC(2000, 0, 1, 12, 0, 0))
+      
         this.createBody();
 
+        // If this is not the Sun, calculate some more orbital elements.
         if (this.name != 'Sun') {
             const {a, e} = this.orbitalElements;
             if (a && e && !isNaN(a) && !isNaN(e)) {
@@ -31,11 +39,14 @@ export class CelestialBody {
                 console.error(`Invalid orbital elements for ${this.name}: a = ${a}  or e = ${e} is not a valid number`);
             }
             
+            // If this is an artificial asteroid, create the ortbit, orbital plane and orbital vectors.
             if (this.subclass === 'artificial') {
                 this.orbit = this.createOrbit(300, true);
                 this.orbitalPlane = this.createOrbitalPlane(this.orbitalElements.h_vec, true);
                 this.orbitalVectors = this.createOrbitalVectors(true);
-            } else {
+            } 
+            // Otherwise, just create the orbit.
+            else { 
                 this.orbit = this.createOrbit();
             }
         }
@@ -53,7 +64,7 @@ export class CelestialBody {
             if (this.name === 'Sun') {
                 material = new THREE.MeshStandardMaterial({
                     map: texture,               
-                    roughness: 0,         // Roughness ≈ non-reflectiveness
+                    roughness: 0,           // Roughness ≈ non-reflectiveness
                     metalness: 0,           // No metalness
                     emissive: 0xffff00,     // With self-illumination
                     emissiveIntensity: 1.0,     
@@ -62,7 +73,7 @@ export class CelestialBody {
             } else {
                 material = new THREE.MeshStandardMaterial({
                     map: texture,
-                    roughness: 0.5,     // Roughness ≈ non-reflectiveness
+                    roughness: 0,       // Roughness ≈ non-reflectiveness
                     metalness: 0,       // No metalness
                     emissive: 0x000000  // No self-illumination
                 });
