@@ -1,31 +1,48 @@
-import { applyOrbitalRotations } from './OrbitalMechanics.js';
-import { spaceScale } from './orrery.js';
+import { rotateOrbit } from './OrbitalMechanics.js';
+import { spaceScale } from './Resources.js';
 
 export class CelestialBody {
-    constructor(scene, data, textures, radiusScale=0.5) {
+    constructor(scene, data, textures = null) {
         this.scene = scene;
         this.name = data.name || 'Unnamed';
         this.radius = data.radius || 1;
-        this.radiusScaled = data.radius * radiusScale || 1 * radiusScale;
         this.category = data.category || 'small body';
         this.subclass = data.subclass || 'NEO';
+        this.opacity = data.opacity || 1.0;
         this.color = data.color || 0x404040;
         this.textures = textures || null;
-        this.texturesPath = this.textures[this.name.toUpperCase()] || null;
         this.orbitalElements = data.orbitalElements || {};  
         this.container = new THREE.Object3D();
         this.label = null;
         this.orbit = null;
         this.trace = [];
 
-        // Orbital period (Kepler's 3rd Law)
-        this.period = Math.sqrt(this.orbitalElements.a ** 3) || 1; 
+        if (textures) this.texturesPath = this.textures[this.name.toUpperCase()];
         
         this.createBody();
+
+        if (this.name != 'Sun') {
+            const {a, e} = this.orbitalElements;
+            if (a && e && !isNaN(a) && !isNaN(e)) {
+                this.period = Math.sqrt(a ** 3); // Orbital period (Kepler's 3rd Law)
+                this.orbitalElements.q = a * (1-e); // Perihelion 
+                this.orbitalElements.Q = a * (1+e); // Apohelion
+            } else {
+                console.error(`Invalid orbital elements for ${this.name}: a = ${a}  or e = ${e} is not a valid number`);
+            }
+            
+            if (this.subclass === 'artificial') {
+                this.orbit = this.createOrbit(300, true);
+                this.orbitalPlane = this.createOrbitalPlane(this.orbitalElements.h_vec, true);
+                this.orbitalVectors = this.createOrbitalVectors(true);
+            } else {
+                this.orbit = this.createOrbit();
+            }
+        }
     }
 
     createBody() {
-        const geometry = new THREE.SphereGeometry(this.radiusScaled, 32, 32);
+        const geometry = new THREE.SphereGeometry(this.radius, 32, 32);
         let material;
 
         if (this.category === 'small body' || !this.texturesPath) {
@@ -36,7 +53,7 @@ export class CelestialBody {
             if (this.name === 'Sun') {
                 material = new THREE.MeshStandardMaterial({
                     map: texture,               
-                    roughness: 0.5,         // Roughness ≈ non-reflectiveness
+                    roughness: 0,         // Roughness ≈ non-reflectiveness
                     metalness: 0,           // No metalness
                     emissive: 0xffff00,     // With self-illumination
                     emissiveIntensity: 1.0,     
@@ -53,7 +70,7 @@ export class CelestialBody {
         }
 
         const mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = false;
+        mesh.castShadow = true;
         mesh.receiveShadow = true;
 
         this.container.add(mesh);
@@ -65,27 +82,22 @@ export class CelestialBody {
           2.27 * Saturn's radius = outer radius of A-ring
         This method may apply to Jupiter, Uranus, and Neptune as well. 
         */
-        if (this.name.toUpperCase() === 'SATURN') {
+        if (this.name === 'Saturn') {
             this.createRing(1.24, 2.27, this.textures['SATURN_RING']);
         }
 
         // Add a label next to the celestial body's mesh.
         this.label = this.addLabel(mesh, this.name);
-
-        if (this.name.toUpperCase() != 'SUN') {
-            this.orbit = this.createOrbitLine();
-        }
-        
     }
 
-    addLabel(mesh, name) {
+    addLabel(mesh, name, visible = false) {
         const labelDiv = document.createElement('div');
         labelDiv.className = 'label';
         labelDiv.textContent = name;
 
         const label = new THREE.CSS2DObject(labelDiv);
-        label.position.set(0, this.radiusScaled + 0.5, 0);
-        label.visible = false; // default: invisible
+        label.position.set(0, this.radius + 0.5, 0);
+        label.visible = visible;
         mesh.add(label);
 
         this.scene.add(label);
@@ -97,14 +109,20 @@ export class CelestialBody {
         const innerRadius = this.radius * inner;
         const outerRadius = this.radius * outer;
 
-        const ringGeometry = new THREE.RingGeometry(innerRadius, outerRadius, 64);
-        const textureLoader = new THREE.TextureLoader();
-        const ringTexture = textureLoader.load(ringTexturePath);
+        const ringGeometry = new THREE.RingBufferGeometry(innerRadius, outerRadius, 64);
+        var pos = ringGeometry.attributes.position;
+        var v3 = new THREE.Vector3();
+        for (let i = 0; i < pos.count; i++){
+          v3.fromBufferAttribute(pos, i);
+          ringGeometry.attributes.uv.setXY(i, v3.length() < (innerRadius + outerRadius)/2 ? 0 : 1, 1);
+        }
+
+        const ringTexture = new THREE.TextureLoader().load(ringTexturePath);
         const ringMaterial = new THREE.MeshBasicMaterial({
             color: 0xffffff,        // white, subsidary
             map: ringTexture,
             side: THREE.DoubleSide,
-            transparent: true
+            transparent: true,
         });
 
         const ring = new THREE.Mesh(ringGeometry, ringMaterial);
@@ -112,42 +130,106 @@ export class CelestialBody {
         this.container.add(ring);
     }
 
-    createOrbitLine() {
-        const {a, e, i, Omega, varpi} = this.orbitalElements;
-
-        const aScaled = a * spaceScale;              // semi-major axis (a)
-        const b = (e < 1) ? aScaled * Math.sqrt(1 - e ** 2) : 0;   // semi-minor axis (b)
-        const curve = new THREE.EllipseCurve(0, 0, aScaled, b, 0, 2 * Math.PI, false, 0);
+    createOrbit(numPoints = 100, visible = false) {
+        const { a, e, i, om, varpi } = this.orbitalElements;
+        const aScaled = a * spaceScale;
         
-        const points = curve.getPoints(100);
-        const geometry = new THREE.BufferGeometry().setFromPoints(
-            points.map(p => new THREE.Vector3(
-                isNaN(p.x) ? 0 : p.x, 
-                0, 
-                isNaN(p.y) ? 0 : p.y
-            ))
-        );
-
-        const orbitOpacity = (this.category === 'small body') ? 0.5 : 1.0;
+        let points = [];
+        if (e < 1) {
+            // Elliptical orbit
+            this.orbitShpae = (e === 0) ? 'circular' : 'elliptical';
+            const b = aScaled * Math.sqrt(1 - e ** 2);
+            const ellipseCurve = new THREE.EllipseCurve(
+                aScaled * e, 0,
+                aScaled, b,
+                0, 2 * Math.PI,
+                false,
+                0
+            );
+            points = ellipseCurve.getPoints(numPoints);
+    
+        } else if (e === 1) {
+            // Parabolic orbit
+            this.orbitShpae = 'parabolic';
+            const p = aScaled * (1 + e);  // latus rectum (正焦弦長)
+            for (let theta = -Math.PI / 2; theta <= Math.PI / 2; theta += Math.PI / numPoints) {
+                const r = p / (1 + Math.cos(theta)); 
+                points.push(new THREE.Vector3(-r * Math.cos(theta), 0, r * Math.sin(theta)));
+            }
+            
+    
+        } else if (e > 1) {
+            // Hyperbolic orbit
+            this.orbitShpae = 'hyperbolic';
+            const b = aScaled * Math.sqrt(e ** 2 - 1);
+            for (let theta = -Math.PI / 4; theta <= Math.PI / 4; theta += Math.PI / (2 * numPoints)) {
+                const r = aScaled * (e ** 2 - 1) / (1 + e * Math.cos(theta));
+                points.push(new THREE.Vector3(-r * Math.cos(theta), 0, r * Math.sin(theta)));
+            }
+        } else {
+            alert('Invalid eccentricity!');
+            this.orbitShpae = null;
+            return;
+        }
+    
+        // Convert the points and THREE.Vector3 and 
+        const transformedPoints = points.map(p => new THREE.Vector3(-p.x, 0, p.y));
+    
+        // Build the Line object
+        const geometry = new THREE.BufferGeometry().setFromPoints(transformedPoints);
         const material = new THREE.LineBasicMaterial({
             color: this.color,
             transparent: true,
-            opacity: orbitOpacity
+            opacity: this.opacity,
         });
-
         const orbitLine = new THREE.Line(geometry, material);
+    
+        // Put the orbit in the container
         const orbitContainer = new THREE.Object3D();
         orbitContainer.add(orbitLine);
-
-        const rotationMatrix = new THREE.Matrix4();
-        applyOrbitalRotations(rotationMatrix, i, Omega, varpi);
-        orbitContainer.applyMatrix4(rotationMatrix);
-
-        orbitContainer.visible = false;
-
+    
+        // Apply orbital rotations to the orbit
+        rotateOrbit(orbitContainer, i, om, varpi);
+    
+        orbitContainer.visible = visible;
+        
         this.scene.add(orbitContainer);
-
         return orbitContainer;
+    }
+
+    createOrbitalPlane(normalVector, visible = false) {
+        const planeSize = this.orbitalElements.Q * 2.5 * spaceScale;
+        const plane = createPlane({
+            normalVector: normalVector,
+            width: planeSize,
+            height: planeSize,
+            color: this.color,
+            opacity: 0.1,
+            transparent: true,
+            visible: visible
+        });
+
+        this.scene.add(plane);
+        return plane;
+    }
+
+    createOrbitalVectors(visible = false) {
+        const orbitalVectors = [];
+        const { h_vec, e_vec, n_vec } = this.orbitalElements;
+        const vectorColors = [0xffff00, 0xee0000, 0x0000ff];
+    
+        [h_vec, e_vec, n_vec].forEach((vec, i) => {
+            const orbitalVector = createArrow({
+                dir: vec,
+                length: 1 * spaceScale,
+                color: vectorColors[i],
+                visible: true
+            });
+            this.scene.add(orbitalVector);
+            orbitalVectors.push(orbitalVector);
+        });
+
+        return orbitalVectors;
     }
 }
 
@@ -165,7 +247,7 @@ export function addLight(scene, type = 'ambient', options = {}) {
     } else if (type === 'ambient') {
         light = new THREE.AmbientLight(
             0x404040, 
-            options.intensity || 0.05
+            options.intensity || 0.5
         );
     }
 
@@ -194,42 +276,87 @@ export function createBackground(scene, radius, texturePath) {
     scene.add(backgroundSphere);
 }
 
-export function addAxesArrows(scene) {
-    const directions = [
+export function createPlane({ 
+    width = 1200, 
+    height = 1200, 
+    color = 0xffffff, 
+    opacity = 0.1, 
+    rotation = null, 
+    normalVector = null,
+    transparent = true,
+    visible = false
+} = {}) {
+    if (!rotation && !normalVector) {
+        throw new Error('Either rotation or normalVector must be provided');
+    }
+
+    const plane = new THREE.Mesh(
+        new THREE.PlaneGeometry(width, height),
+        new THREE.MeshBasicMaterial({
+            color: color,
+            side: THREE.DoubleSide,
+            transparent: transparent,
+            opacity: opacity
+        })
+    );
+
+    // Apply either rotation or normalVector logic
+    if (rotation) {
+        plane.rotation.set(rotation.x || 0, rotation.y || 0, rotation.z || 0);
+    } else {
+        plane.lookAt(normalVector.clone().normalize());
+    }
+
+    plane.visible = visible;
+
+    return plane;
+}
+
+export function createArrow({ 
+    dir = new THREE.Vector3(1, 0, 0), 
+    origin = new THREE.Vector3(0, 0, 0),
+    length = null, 
+    color = 0xffffff, 
+    headLength = 4,
+    headWidth = 2,
+    visible = false 
+} = {}) {
+    const arrowLength = length || (dir.length() * spaceScale)
+    const unitVector = dir.clone().normalize();
+    const arrowHelper = new THREE.ArrowHelper(
+        unitVector, origin, arrowLength, color, headLength, headWidth
+    );
+    arrowHelper.visible = visible;
+    return arrowHelper;
+}
+
+// ----------------------------------------------------
+
+export function addEclipticPlane(scene, visible = false) {
+    const eclipticPlane = createPlane({ 
+        rotation: { x: Math.PI / 2 },
+        visible: visible
+      }, );
+    scene.add(eclipticPlane);
+    return eclipticPlane;
+}
+
+
+export function addAxesArrows(scene, visible = false) {
+    let axesArrows = [];
+    [
         { dir: new THREE.Vector3(1, 0, 0), color: 0xff0000 },  // X-axis: red
         { dir: new THREE.Vector3(0, 1, 0), color: 0x00ff00 },  // Y-axis: green
         { dir: new THREE.Vector3(0, 0, 1), color: 0x0000ff }   // Z-axis: blue
-    ];
-
-    const arrowLength = spaceScale;
-    const arrowHeadLength = 4;
-    const arrowHeadWidth = 2;
-    const origin = new THREE.Vector3(0, 0, 0);
-    let axesArrows = [];
-
-    directions.forEach(({ dir, color }) => {
-        const arrow = new THREE.ArrowHelper(dir, origin, arrowLength, color, arrowHeadLength, arrowHeadWidth);
-        arrow.visible = false;  // default: invisible
+    ].forEach(({ dir, color }) => {
+        const arrow = createArrow({
+            dir: dir,
+            color: color
+        });
+        arrow.visible = visible;  // default: invisible
         scene.add(arrow);
         axesArrows.push(arrow);
     });
 
     return axesArrows;
-}
-
-export function addEclipticPlane(scene, width = 1200, height = 1200, color = 0xffffff, opacity = 0.1) {
-    const planeGeometry = new THREE.PlaneGeometry(width, height); 
-    const planeMaterial = new THREE.MeshBasicMaterial({
-        color: color, 
-        side: THREE.DoubleSide, 
-        transparent: true, 
-        opacity: opacity 
-    });
-
-    const eclipticPlane = new THREE.Mesh(planeGeometry, planeMaterial);
-    eclipticPlane.rotation.x = Math.PI / 2;
-    eclipticPlane.visible = false;  // default: invisible
-    scene.add(eclipticPlane);
-
-    return eclipticPlane; 
 }
