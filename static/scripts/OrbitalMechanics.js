@@ -1,9 +1,11 @@
-import { createSweptArea, EARTH_SIDEREAL_YEAR, SWEPT_AREAS_AMOUNT } from './Education.js';
 import { sunData, spaceScale } from './Resources.js';
 import { printQuantity } from './Tools.js';
+import { createSweptArea } from './Education.js';
+
+let previousSweptAreaPhase = null
+const phaseNumber = 8;
 
 const J2000 = 2451545.0;
-
 const G = 39.478 // AU^3 yr^-2 EarthMass^-1
 const sunMass = sunData.mass;  // Solar mass in Earth masses
 const mu = 39.421 //G * sunMass; // Standard gravitational parameter
@@ -62,7 +64,7 @@ export function rotateOrbit(orbitContainer, i, Omega, varpi) {
 
 export function updateObjectPosition(object, currentJulianDate) {
     const yearSinceJ2000 = (currentJulianDate - J2000) / 365.25;
-    const {radius, period, orbitalElements, container, label, trace} = object;
+    const {radius, period, orbitalElements, container, label} = object;
     const {a, e, i, om, varpi, ma} = orbitalElements;
 
     // Calculate Mean Anomaly (M), Eccentric Anomaly (E), True Anomaly (ν)
@@ -87,33 +89,19 @@ export function updateObjectPosition(object, currentJulianDate) {
     container.updateMatrixWorld(true);  // Make sure the changes apply to the scene
     label.position.set(position.x, position.y + radius + 0.5, position.z);
 
-    
-    if (
-        currentDate - object.lastSweptTimestamp >=
-        (EARTH_SIDEREAL_YEAR * object.period) / SWEPT_AREAS_AMOUNT
-    ) {
-        if (object.name == "Mercury") {
-            object.lastSweptTimestamp = new Date(currentDate);
-            let points = trace.slice(
-                object.lastTraceIndex,
-                trace.length
-            );
-            // const path = new THREE.Path()
-            // path.absellipse(
-            //     0,
-            //     0,
-            //     obj.a * spaceScale,
-            //     obj.a * Math.sqrt(1 - obj.e ** 2) * spaceScale,
-            //     getAngle(points.at(0)),
-            //     getAngle(points.at(-1)),
-            //     false,
-            //     0
-            //   );
-            // createSweptArea(obj, path.getPoints());
-            createSweptArea(scene, object, points);
-    
-            object.lastTraceIndex = trace.length - 1;
+    if (object.name === 'Mercury') {
+        // Calculate the swept area phase
+        let sweptAreaPhase = Math.floor(phaseNumber * yearSinceJ2000 / period) % phaseNumber;
+
+        // If sweptAreaPhase is 0, clear all swept areas (after a full cycle)
+        if (previousSweptAreaPhase === (phaseNumber - 1)  && sweptAreaPhase === 0) {
+            object.sweptAreaGroup.clear();
+            // console.log('New cycle');
         }
+        
+        // Create swept area for the current phase
+        createSweptArea(object, position, sweptAreaPhase);
+        previousSweptAreaPhase = sweptAreaPhase;
     }
 }
 
@@ -178,3 +166,5 @@ export function calcOrbitalElements(position, velocity, verbose = true) {
         n_vec: n_vec
     };
 }
+
+

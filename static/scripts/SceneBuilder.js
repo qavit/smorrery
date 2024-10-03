@@ -21,11 +21,12 @@ export class CelestialBody {
         }
 
         // For Education Module Orbital period (Kepler's 2rd Law)
-        this.period = Math.sqrt(this.orbitalElements.a ** 3) || 1; 
-        this.sweptAreas = [];
-        this.lastTraceIndex = 0;
-        this.lastSweptTimestamp = new Date(Date.UTC(2000, 0, 1, 12, 0, 0))
-      
+        if (this.name === 'Mercury') {
+            this.sweptAreaGroup = new THREE.Group();
+            this.sweptAreaGroup.visible = false;
+        }
+        
+    
         this.createBody();
 
         // If this is not the Sun, calculate some more orbital elements.

@@ -29,7 +29,6 @@ export function init(controls) {
         icon.textContent = labInputPanel.classList.contains('open') ? 'close' : 'add';
     });
 
-
     labInputPanel.addEventListener('mouseenter', () => { controls.enabled = false });
     labInputPanel.addEventListener('mouseleave', () => { controls.enabled = true });
 
@@ -113,8 +112,8 @@ function confirmAsteroidParams() {
     // If name is not provided, generate a custom name with numbering
     // e.g. My Asteroid 001, 002, etc.
     if (!myName) {
-        myName = `My Asteroid ${asteroidCounter.toString().padStart(3, '0')}`;  
         asteroidCounter++;
+        myName = `My Asteroid ${asteroidCounter.toString().padStart(3, '0')}`;  
     }
 
     const orbitalElements = calcOrbitalElements(initialPosition, initialVelocity);
@@ -142,6 +141,7 @@ function confirmAsteroidParams() {
     celestialObjects.push(asteroid);
 }
 
+// Temporarily disabled
 function updateVectors(positionVector, velocityVector) {
     const velocityVectorScaled = velocityVector.clone().divideScalar(60);
 

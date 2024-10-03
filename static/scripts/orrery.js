@@ -285,10 +285,8 @@ function setupUIControls(celestialObjects) {
 
     showSweptAreaCheckbox.addEventListener('change', (event) => {
         celestialObjects.forEach(obj => {
-            if(obj.sweptAreas) {
-                obj.sweptAreas.forEach(area => {
-                    area.visible = event.target.checked;
-                });
+            if(obj.sweptAreaGroup) {
+                obj.sweptAreaGroup.visible = event.target.checked;
             }
         });
     });
@@ -426,15 +424,7 @@ function animate() {
 
 function updatePositions() {
     const currentJulianDate = calculateJulianDate(currentDate);
-    
     celestialObjects.forEach(object => {
-        while (object.sweptAreas.length) {
-            scene.remove(object.sweptAreas.shift())
-        }
-
-        object.lastTraceIndex = 0;
-        object.lastSweptTimestamp = new Date(currentDate)
-
         if (object.name != 'Sun') {
             updateObjectPosition(object, currentJulianDate);
         }
