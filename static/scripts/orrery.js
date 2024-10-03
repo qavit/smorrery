@@ -13,19 +13,17 @@ export let celestialObjects = [];
 
 let camera, renderer, labelRenderer, controls;
 let sun;
-let smallBodiesData = []; // 行星、小天體數據陣列
+let smallBodiesData = [];
 
 let backgroundSphere, axesArrows, eclipticPlane;
 let isPlaying = true;
-let timeScale = 1;
-let timeDirection = 1;
-
+let timeScale = 1;      // Animation speed; 0.01~100
+let timeDirection = 1;  // Forward or backward; -1 or 1
 let showLabels = false;
-
 let TEXTURES = SSS_TEXTURES;
 
-const raycaster = new THREE.Raycaster(); // 射線檢測器
-const mouse = new THREE.Vector2();  // 儲存滑鼠位置
+const raycaster = new THREE.Raycaster(); // Raycaster for detecting intersections
+const mouse = new THREE.Vector2();  // Stores mouse position
 
 // Fetch sbdb_data from the API endpoint
 async function fetchSbdbData() {
@@ -45,7 +43,6 @@ async function fetchSbdbData() {
                 const varpi = parseFloat(smallBody[7]);
                 const ma = parseFloat(smallBody[8]);
                 
-
                 // Check for any NaN values in the orbital parameters
                 if ([epoch, e, a, q, i, om, varpi, ma].some(isNaN)) {
                     console.warn(`Invalid orbital data for object: ${smallBody[0]}`);
@@ -67,7 +64,8 @@ async function fetchSbdbData() {
                     color: 0xffff00,   // Custom color for small bodies
                     opacity: 0.3,
                     radius: 0.2,       // Custom radius for small bodies
-                    category: 'small body'
+                    category: 'small body',
+                    subclass: 'NEO'
                 };
             }).filter(body => body !== null);  // Filter out any invalid bodies
 
@@ -160,23 +158,22 @@ function onMouseClick(event) {
 }
 
 function calculateDistanceToMouse(container) {
-    // 獲取容器的世界座標
+    // Get world position of the container
     const containerPosition = new THREE.Vector3();
 
-    // 確保 container 被初始化
+    // Ensure the container is initialized
     if (container) {
         container.getWorldPosition(containerPosition);
     } else {
-        console.error('Container is undefined or not initialized');
+        console.error('Container not initialized');
         return;
     }
     
-    // 使用滑鼠位置創建一個射線
+    // Create ray from mouse position
     raycaster.setFromCamera(mouse, camera);
 
-    // 計算滑鼠射線到容器位置的距離
-    const distance = raycaster.ray.distanceToPoint(containerPosition);
-    return distance;
+    // Calculate distance from mouse ray to container position
+    return raycaster.ray.distanceToPoint(containerPosition);
 }
 
 async function init() {
@@ -203,7 +200,6 @@ async function init() {
     controls.minDistance = spaceScale * 0.1;
     controls.maxDistance = spaceScale * 40;
 
-    // 等待 sbdbData 載入完成
     await fetchSbdbData(); 
 
     backgroundSphere = sb.createBackground(scene, 1200, TEXTURES['MILKY_WAY']);
