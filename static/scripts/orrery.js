@@ -283,6 +283,17 @@ function setupUIControls(celestialObjects) {
         eclipticPlane.visible = event.target.checked; 
     });
 
+    // Toggle visibility of swept areas
+    showSweptAreaCheckbox.addEventListener('change', (event) => {
+      celestialObjects.forEach(obj => {
+        if(obj.sweptAreas) {
+          obj.sweptAreas.forEach(area => {
+            area.visible = event.target.checked;
+          });
+        }
+      });
+    });
+
     showSweptAreaCheckbox.addEventListener('change', (event) => {
         celestialObjects.forEach(obj => {
             if(obj.sweptAreaGroup) {
