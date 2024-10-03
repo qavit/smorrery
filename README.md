@@ -1,6 +1,6 @@
 # Smorrery: a simple orrery app
 
-![](https://i.imgur.com/Ptd8Wc0.png)
+![](https://imgur.com/ECB6ciw.png)
 
 ## Description
 
@@ -14,12 +14,21 @@
 3. Open a browser and access the index page at `http://127.0.0.1:5000/`.
 4. Access the orrery web app at `http://127.0.0.1:5000/orrery`.
 
+## New features (2024-10-04)
+
+- **Celestial Lab — Create an asteroid!**. 
+    1. Input the mass, initial position and velocity, and give it a name.
+    2. Launch your asteroid!
+    3. Draw auxiliary visual objects, such as specific , eccentricity vectors
+- *Caution! Coordinate transformation problems. (To be fixed)*
+- Fixed Saturn's ring texture problem.
+
 ## New features (2024-09-30)
 
 - Render the traces of 20 NEOs.
 - Add textures for the Sun and planets.
 - Include a starry sky background with Milky Way.
-- Add rings of Saturn (*texture mapping has an issue, temporarily replaced with a white color*)
+- Add rings of Saturn (~~texture mapping has an issue, temporarily replaced with a white color~~)
 - Hovering over celestial objects with the mouse triggers a green glow
 - Clicking on the mesh or label of a celestial object displays its information, currently printed in the console
 
@@ -27,7 +36,6 @@
 
 - Add a dropdown menu containing checkboxes to toggle the display of different types of celestial objects (such as the Sun, planets, [NEOs](https://en.wikipedia.org/wiki/Near-Earth_object), [PHAs](https://en.wikipedia.org/wiki/Potentially_hazardous_object), other asteroids, etc.)
 - Compare calculated planetary positions with [ephemerides](https://ssd.jpl.nasa.gov/planets/eph_export.html) for accuracy.
-- Incorporate additional visual reference elements such as  
 - Add an "impact risk" view that visualizes and emphasizes the proximity of Earth's orbit and some NEOs' orbits.
 - Add more educational canvases that can be used to teach concepts such as Kepler's laws or the Sun-Earth–Moon system.
 - Add planetary axial tilt and rotation, with special emphasis on Earth.

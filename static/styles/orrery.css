@@ -127,3 +127,107 @@ body {
 #reverse.reversed .fas {
     transform: scaleX(-1);
 }
+
+#lab-input-panel {
+    display: block; 
+    pointer-events: auto;
+    position: fixed;
+    top: 0;
+    right: -300px;
+    width: 300px;
+    height: 100%;
+    background-color: #1e1e1e;
+    transition: right 0.3s ease-in-out;
+    overflow-y: auto;
+    box-shadow: -2px 0 5px rgba(0,0,0,0.3);
+    z-index:1000;
+}
+
+#lab-input-panel.open {
+    right: 0;
+}
+
+.panel-content {
+    padding: 16px;
+}
+
+.lab-input-group {
+    margin-bottom: 16px;
+}
+
+.lab-input-group label {
+    display: block;
+    margin-bottom: 4px;
+    color: #b0b0b0;
+    font-size: 12px;
+}
+
+.lab-input-group input {
+    width: 100%;
+    padding: 6px;
+    border: none;
+    border-bottom: 1px solid #444;
+    background-color: transparent;
+    color: #ffffff;
+    font-size: 14px;
+    transition: border-bottom-color 0.3s;
+}
+
+.lab-input-group input:focus {
+    outline: none;
+    border-bottom-color: #4d6c85;
+}
+
+.lab-button {
+    background-color: #4d6c85;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    text-transform: uppercase;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.lab-button:hover {
+    background-color: #1976D2;
+}
+
+#lab-toggle-panel {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    background-color: #4d6c85; /* #2196F3 */
+    color: white;
+    border: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    box-shadow: 0 3px 5px rgba(0,0,0,0.2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index:1200;
+}
+
+.material-icons {
+    font-size: 20px;
+}
+
+h2, h3 {
+    font-size: 16px;
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: #e0e0e0;
+}
+
+.unit {
+    color: #888;
+    font-size: 12px;
+    margin-left: 4px;
+}

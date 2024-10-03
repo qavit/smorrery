@@ -1,26 +1,26 @@
-import { SSS_TEXTURES, sunData, planetsData } from './Resources.js';
+import { spaceScale, SSS_TEXTURES, sunData, planetsData } from './Resources.js';
 import { updateObjectPosition } from './OrbitalMechanics.js';
+import { extractNameOrNumber } from './Tools.js';
 import * as sb from './SceneBuilder.js';
+import * as cl from './CelestialLab.js';
 
-const J2000_DATE = new Date(Date.UTC(2000, 0, 1, 12, 0, 0)); // 2000-01-01 12:00 UTC
 const MIN_DATE = new Date(1900, 0, 1);
 const MAX_DATE = new Date(2100, 11, 31);
+let currentDate = new Date(Date.UTC(2000, 0, 1, 12, 0, 0)); // 2000-01-01 12:00 UTC
 
 export let scene;
+export let celestialObjects = [];
+
 let camera, renderer, labelRenderer, controls;
 let sun;
 let smallBodiesData = []; // 行星、小天體數據陣列
-let orbitingObjects = [];
-let celestialObjects = [];
 
 let backgroundSphere, axesArrows, eclipticPlane;
 let isPlaying = true;
 let timeScale = 1;
 let timeDirection = 1;
-export let currentDate = J2000_DATE;
-let showLabels = false;
 
-export let spaceScale = 20;
+let showLabels = false;
 
 let TEXTURES = SSS_TEXTURES;
 
@@ -65,7 +65,8 @@ async function fetchSbdbData() {
                         epoch: epoch   // Epoch, e.g. 2460600.5
                     },
                     color: 0xffff00,   // Custom color for small bodies
-                    radius: 0.1,       // Custom radius for small bodies
+                    opacity: 0.3,
+                    radius: 0.2,       // Custom radius for small bodies
                     category: 'small body'
                 };
             }).filter(body => body !== null);  // Filter out any invalid bodies
@@ -78,6 +79,7 @@ async function fetchSbdbData() {
         console.error('Error fetching sbdb_data:', error);
     }
 }
+
 function getHoveredObject(event) {
     // Calculate mouse position (Normalized Device Coordinates)
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -206,27 +208,25 @@ async function init() {
 
     backgroundSphere = sb.createBackground(scene, 1200, TEXTURES['MILKY_WAY']);
     axesArrows = sb.addAxesArrows(scene);
-    eclipticPlane = sb.addEclipticPlane(scene, 1200, 1200, 0xffffff, 0.1);
+    eclipticPlane = sb.addEclipticPlane(scene);
 
     sb.addLight(scene, 'sun', { intensity: 1, range: 1000 });
     sb.addLight(scene, 'ambient', { intensity: 0.05 });
 
     sun = new sb.CelestialBody(scene, sunData, TEXTURES);
+    celestialObjects.push(sun);
 
-    const orbitingObjectsData = [...planetsData, ...smallBodiesData]
-    orbitingObjectsData.forEach(data => {
+    //[...planetsData, ...smallBodiesData]
+    planetsData.forEach(data => {
         const celestialBody = new sb.CelestialBody(scene, data, TEXTURES);
-        orbitingObjects.push(celestialBody);
+        celestialObjects.push(celestialBody);
     });
 
-    celestialObjects = [...orbitingObjects, ...[sun]];
-
     console.log('Number of celestial objects: ' + celestialObjects.length);
+    console.log(celestialObjects);
+    // celestialObjects.forEach(object => { console.log(object.name) });
 
-    celestialObjects.forEach(object => {
-        console.log(object.name);
-    })
-
+    cl.init(controls);
     setupUIControls(celestialObjects);
     setupTimeControls();
 
@@ -236,37 +236,32 @@ async function init() {
 
     animate(); 
 
+    // Time Control
     const timeControl = document.getElementById('timeControl');
-        timeControl.addEventListener('mouseenter', () => {
-        controls.enabled = false;
-    });
-    timeControl.addEventListener('mouseleave', () => {
-        controls.enabled = true;
-    });
+    timeControl.addEventListener('mouseenter', () => { controls.enabled = false });
+    timeControl.addEventListener('mouseleave', () => { controls.enabled = true });
 }
 
-function showObjectInfo(intersectedObject) {
-    console.log(`This is ${intersectedObject.name}.
-    Semi-major axis = ${intersectedObject.orbitalElements.a} AU
-    Eccentricity = ${intersectedObject.orbitalElements.e}
-    Period = ${intersectedObject.period} yr`);
+function showObjectInfo(object) {
+    const additionalInfo = (object.name.toUpperCase() === 'SUN') ? '' : `
+   Semi-major axis = ${object.orbitalElements.a.toFixed(2)} AU
+   Perihelion = ${object.orbitalElements.q.toFixed(2)} AU
+   Eccentricity = ${object.orbitalElements.e.toFixed(2)}
+   Period = ${object.period.toFixed(2)} yr`;
+    alert(`This is ${object.name}!` + additionalInfo);
 }
 
-
-export function setupUIControls(celestialObjects) {
+function setupUIControls(celestialObjects) {
     const showOrbitsCheckbox = document.getElementById('showOrbits');
     const showLabelsCheckbox = document.getElementById('showLabels');
     const showAxesCheckbox = document.getElementById('showAxes');
     const showEclipticCheckbox = document.getElementById('showEcliptic');
-    const clearTracesButton = document.getElementById('clearTraces');
     const showSweptAreaCheckbox = document.getElementById('showSweptArea');
 
     // Toggle visibility of orbits
     showOrbitsCheckbox.addEventListener('change', (event) => {
         celestialObjects.forEach(object => {
-            if (object.orbit) {
-                object.orbit.visible = event.target.checked; 
-            }
+            if (object.orbit) { object.orbit.visible = event.target.checked }
         });
     });
 
@@ -274,9 +269,7 @@ export function setupUIControls(celestialObjects) {
     showLabelsCheckbox.addEventListener('change', (event) => {
         showLabels = event.target.checked;
         celestialObjects.forEach(object => {
-            if (object.label) {
-                object.label.visible = event.target.checked; 
-            }
+            if (object.label) { object.label.visible = event.target.checked }
         });
     });
 
@@ -299,10 +292,16 @@ export function setupUIControls(celestialObjects) {
             }
         });
     });
-    // Clear all traces
-    clearTracesButton.addEventListener('click', clearTraces);
+
 }
 
+// Update button icon and title
+function updateButton(button, condition, titleTrue, titleFalse, iconTrue, iconFalse) {
+    button.title = condition ? titleTrue : titleFalse;
+    if (iconTrue && iconFalse) {
+        button.innerHTML = condition ? iconTrue : iconFalse;
+    }
+}
 
 function setupTimeControls() {
     const playPauseButton = document.getElementById('playPause');
@@ -312,14 +311,6 @@ function setupTimeControls() {
     const speedValue = document.getElementById('speedValue');
     const setSpeedOneButton = document.getElementById('setSpeedOne');
     const reverseButton = document.getElementById('reverse');
-
-    // Update button icon and title
-    function updateButton(button, condition, titleTrue, titleFalse, iconTrue, iconFalse) {
-        button.title = condition ? titleTrue : titleFalse;
-        if (iconTrue && iconFalse) {
-            button.innerHTML = condition ? iconTrue : iconFalse;
-        }
-    }
 
     // Toggle play/pause state and update the button
     function togglePlayPause() {
@@ -332,7 +323,6 @@ function setupTimeControls() {
         timeDirection *= -1;
         reverseButton.classList.toggle('reversed');
         updateSpeedDisplay();
-        clearTraces(celestialObjects);
         updateButton(reverseButton, timeDirection == 1, "Play backward", "Play forward");
     }
 
@@ -347,18 +337,16 @@ function setupTimeControls() {
     reverseButton.addEventListener('click', toggleReverse);
 
     goToJ2000Button.addEventListener('click', () => {
-        currentDate = new Date(J2000_DATE.getTime());
+        currentDate.setTime(new Date(Date.UTC(2000, 0, 1, 12, 0, 0)));
         console.log(currentDate);
         updateDateDisplay();
-        clearTraces(celestialObjects);
         updatePositions();
     });
 
     goToTodayButton.addEventListener('click', () => {
-        currentDate = new Date();
+        currentDate.setTime(new Date());
         console.log(currentDate);
         updateDateDisplay();
-        clearTraces(celestialObjects);
         updatePositions();
     });
 
@@ -402,27 +390,6 @@ export function updateDateDisplay() {
     document.getElementById('julianDateDisplay').textContent = `JD: ${calculateJulianDate(currentDate).toFixed(2)}`;
 }
 
-function extractNameOrNumber(input) {
-    // 定義正則表達式
-    const numberNameRegex = /^\s+(\d+\s+[A-Za-z]+)\s+\(.*\)$/;  // 用於匹配 '433 Eros (A898 PA)'，提取名稱
-    const numberRegex = /^(\d+)/;  // 用於匹配數字編號
-
-    // 先嘗試匹配名稱
-    let match = input.match(numberNameRegex);
-    if (match) {
-        return match[1];  // 返回名稱
-    }
-
-    // 如果名稱匹配失敗，則匹配數字
-    match = input.match(numberRegex);
-    if (match) {
-        return match[1];  // 返回數字編號
-    }
-
-    // 如果兩者都無法匹配，返回 null 或其他提示
-    return null;
-}
-
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -460,44 +427,7 @@ function animate() {
 function updatePositions() {
     const currentJulianDate = calculateJulianDate(currentDate);
     
-    orbitingObjects.forEach(object => {
-        updateObjectPosition(object, currentJulianDate);
-        drawTrace(object);
-    });
-}
-
-function drawTrace(object) {
-   // 檢查 object.trace 是否包含有效的點
-    if (!object.trace || object.trace.length === 0 || object.trace.some(point => isNaN(point.x) || isNaN(point.y) || isNaN(point.z))) {
-        console.error(`Invalid trace data for object: ${object.name}`);
-        return;  // 如果軌跡無效，直接返回
-    }
-
-    // 移除舊的軌跡線
-    if (object.traceLine) {
-        scene.remove(object.traceLine);
-    }
-
-    // 創建新的軌跡線
-    const traceGeometry = new THREE.BufferGeometry().setFromPoints(object.trace);
-    const traceMaterial = new THREE.LineBasicMaterial({
-        color: object.color,
-        transparent: true, // 允許透明
-        opacity: object.category === 'small body' ? 0.3 : 1.0    // 初始不透明度
-    });
-
-    const traceLine = new THREE.Line(traceGeometry, traceMaterial);
-    scene.add(traceLine);
-
-    // 儲存新軌跡線
-    object.traceLine = traceLine;
-}
-
-function clearTraces() {
     celestialObjects.forEach(object => {
-        // Clear the path array
-        object.trace = [];
-
         while (object.sweptAreas.length) {
             scene.remove(object.sweptAreas.shift())
         }
@@ -505,10 +435,8 @@ function clearTraces() {
         object.lastTraceIndex = 0;
         object.lastSweptTimestamp = new Date(currentDate)
 
-        // Remove the existing path line from the scene
-        if (object.traceLine) {
-            scene.remove(object.traceLine);
-            object.traceLine = null; // Reset the path line reference
+        if (object.name != 'Sun') {
+            updateObjectPosition(object, currentJulianDate);
         }
     });
 }
