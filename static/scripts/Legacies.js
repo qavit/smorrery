@@ -38,3 +38,22 @@ function drawTrace(object) {
          }
      });
  }
+
+ function calculateDistanceToMouse(container) {
+    // Get world position of the container
+    const containerPosition = new THREE.Vector3();
+
+    // Ensure the container is initialized
+    if (container) {
+        container.getWorldPosition(containerPosition);
+    } else {
+        console.error('Container not initialized');
+        return;
+    }
+    
+    // Create ray from mouse position
+    raycaster.setFromCamera(mouse, camera);
+
+    // Calculate distance from mouse ray to container position
+    return raycaster.ray.distanceToPoint(containerPosition);
+}

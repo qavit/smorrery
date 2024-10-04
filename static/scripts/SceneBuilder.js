@@ -97,6 +97,7 @@ export class CelestialBody {
                 this.orbit = this.createOrbit(300, true);  // Create orbit with 300 points and visibility set to true
                 this.orbitalPlane = this.addOrbitalPlane(this.orbitalElements.h_vec, true);  // Create orbital plane
                 this.orbitalVectors = this.addOrbitalVectors(true);  // Create orbital vectors
+                this.label.visible = true;
             } 
             // Otherwise, just create the orbit (default behavior for planets, moons, etc.)
             else { 

@@ -4,123 +4,249 @@ import { extractNameOrNumber } from './Tools.js';
 import * as sb from './SceneBuilder.js';
 import * as cl from './CelestialLab.js';
 
+// ----------------------------------
+// GLOBAL VARIABLES & CONSTANTS
+// ----------------------------------
+
+// Constants about Date and Time
 const MIN_DATE = new Date(1900, 0, 1);
 const MAX_DATE = new Date(2100, 11, 31);
-let currentDate = new Date(Date.UTC(2000, 0, 1, 12, 0, 0)); // 2000-01-01 12:00 UTC
+const currentDate = new Date(Date.UTC(2000, 0, 1, 12, 0, 0)); // Initila date: J2000.0
 
-export let scene;
+// Variables for Celestial Objects
+let smallBodiesData = [];
 export let celestialObjects = [];
 
+// Variables/Constants for Scene Elements
+export let scene;
 let camera, renderer, labelRenderer, controls;
-let sun;
-let smallBodiesData = [];
-
 let backgroundSphere, axesArrows, eclipticPlane;
+const TEXTURES = SSS_TEXTURES;
+
+// Variables/Constants for UI & Time Controls
 let isPlaying = true;
-let timeScale = 1;      // Animation speed; 0.01~100
-let timeDirection = 1;  // Forward or backward; -1 or 1
-let showLabels = false;
-let TEXTURES = SSS_TEXTURES;
+let timeScale = 1;          // Animation speed; 0.01~100
+let timeDirection = 1;      // Forward or backward; -1 or 1
+let showLabels = false;     // will be replaced by labelVisibility
 
-const raycaster = new THREE.Raycaster(); // Raycaster for detecting intersections
-const mouse = new THREE.Vector2();  // Stores mouse position
+// Label Selector for Future Update
+const labelVisibility = {
+    'Sun': true,
+    'planets': true,
+    'drawPlanets': true,
+    'NEOs': false,
+    'otherAsteroids': false,
+    'otherComets': false
+};
 
-// Fetch sbdb_data from the API endpoint
-async function fetchSbdbData() {
+// Variables/Constants for Hover Detection 
+const raycaster = new THREE.Raycaster();    // Raycaster for detecting intersections
+const mouse = new THREE.Vector2();          // Stores mouse position
+let lastMousePosition = { x: null, y: null };
+let lastHoveredObject = null;
+
+// Constants for Batch Position Updates
+const frustum = new THREE.Frustum();
+const cameraViewProjectionMatrix = new THREE.Matrix4();
+
+
+// ------------------------
+// INITIALIZATION FUNCTION
+// ------------------------
+
+async function init() {
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+    camera.position.set(0, 20, 50);
+
+    // Setup WebGL Renderer
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    // Setup Label Renderer
+    labelRenderer = new THREE.CSS2DRenderer();
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.domElement.style.position = 'absolute';
+    labelRenderer.domElement.style.top = '0px';
+    document.body.appendChild(labelRenderer.domElement);
+
+    // Setup Orbit Controls
+    controls = new THREE.OrbitControls(camera, labelRenderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.screenSpacePanning = false;
+    controls.minDistance = spaceScale * 0.1;
+    controls.maxDistance = spaceScale * 40;
+
+    // Fetch Small Body Data
+    await fetchSmallBodyData();
+
+    // Setup Scene Elements
+    backgroundSphere = sb.createBackground(scene, 1200, TEXTURES['MILKY_WAY']);
+    axesArrows = sb.addAxesArrows(scene);
+    eclipticPlane = sb.addEclipticPlane(scene);
+    sb.createLight(scene, 'sun', { intensity: 1, range: 1000 });
+    sb.createLight(scene, 'ambient', { intensity: 0.05 });
+
+    // Create Celestial Objects
+    const sun = new sb.CelestialBody(scene, sunData, TEXTURES);
+    celestialObjects.push(sun);
+
+    [...planetsData, ...smallBodiesData].forEach(data => {
+        const celestialBody = new sb.CelestialBody(scene, data, TEXTURES);
+        celestialObjects.push(celestialBody);
+    });
+
+    console.log(`Created ${celestialObjects.length} celestial objects.`);
+    console.log(celestialObjects);
+
+    // Setup UI & Time Controls
+    cl.init(controls);
+    setupUIControls(celestialObjects);
+    setupTimeControls();
+
+    // Event Listeners
+    window.addEventListener('resize', onWindowResize, false);
+    window.addEventListener('click', onMouseClick, false);
+    window.addEventListener('mousemove', onMouseMove, false);
+
+    // Start Animation
+    animate(); 
+
+    // Time Control Interactions
+    const timeControl = document.getElementById('timeControl');
+    timeControl.addEventListener('mouseenter', () => { controls.enabled = false });
+    timeControl.addEventListener('mouseleave', () => { controls.enabled = true });
+}
+
+// --------------------------------------------
+// DATA IMPORTING & MANIPULATION FUNCTIONS
+// --------------------------------------------
+
+/**
+ * Fetch small body data from the API endpoint and transform it into a usable structure.
+ * The function fetches orbital data for small bodies, validates the numerical values,
+ * and returns the data in a format consistent with `planetsData`.
+ * 
+ * @returns {Promise<void>} - The function does not return a value but updates the global `smallBodiesData` array.
+ */
+async function fetchSmallBodyData() {
     try {
         const response = await fetch('/api/sbdb_query');
         const data = await response.json();
-        if (data && data.data) {
-            smallBodiesData = data.data.map(smallBody => {
-                // Parse data and ensure valid numerical values
-                const extractedName = extractNameOrNumber(smallBody[0])
-                const epoch = parseFloat(smallBody[1]);
-                const e = parseFloat(smallBody[2]);
-                const a = parseFloat(smallBody[3]);
-                const q = parseFloat(smallBody[4]);
-                const i = parseFloat(smallBody[5]);
-                const om = parseFloat(smallBody[6]);
-                const varpi = parseFloat(smallBody[7]);
-                const ma = parseFloat(smallBody[8]);
-                
-                // Check for any NaN values in the orbital parameters
-                if ([epoch, e, a, q, i, om, varpi, ma].some(isNaN)) {
-                    console.warn(`Invalid orbital data for object: ${smallBody[0]}`);
-                    return null; // Return null for invalid data
-                }
 
-                // Return the celestial body data in a structure consistent with planetsData
+        // Check if the response data has the expected structure
+        if (data && data.data) {
+            smallBodiesData = data.data.map(body => {
+                // Fields: full_name, epoch, e, a, q, i, om, w, ma
+                // Extract the name or identifier (first element) as a string
+                const fullName = body[0];
+                const extractedName = extractNameOrNumber(fullName);
+            
+                // Parse the remaining orbital parameters as floats
+                const [ epoch, e, a, q, i, om, w, ma ] = body.slice(1).map(parseFloat);
+            
+                // Validate parsed orbital data and check for NaN values
+                if ([epoch, e, a, q, i, om, w, ma ].some(isNaN)) {
+                    console.warn(`Invalid data for object: ${fullName}`);
+                    return null; // Return null if any orbital parameter is invalid
+                }
+            
+                // Return valid celestial body data
                 return {
                     name: extractedName,
                     orbitalElements: {
-                        a: a,          // Semi-major axis
-                        e: e,          // Eccentricity
-                        i: i,          // Inclination (i), degrees
-                        om: om,        // Longitude of Ascending Node (Ω), degrees
-                        varpi: varpi,  // Longitude of Perihelion (ϖ), degrees
-                        ma: ma,        // Mean Anomaly (M), degrees
-                        epoch: epoch   // Epoch, e.g. 2460600.5
+                        a: a,        // Semi-major axis (a), in AU
+                        e: e,        // Eccentricity (e)
+                        i: i,        // Inclination (i), in degrees
+                        om: om,      // Ascending Node (Ω), in degrees
+                        w: w,        // Perihelion (ϖ), in degrees
+                        ma: ma,      // Mean Anomaly (M), in degrees
+                        epoch        // Epoch, in Julian Date, e.g., 2460600.5
                     },
-                    color: 0xffff00,   // Custom color for small bodies
-                    opacity: 0.3,
-                    radius: 0.2,       // Custom radius for small bodies
+                    color: 0xffff00, // Custom color for small bodies
+                    opacity: 0.3,    // Transparency level
+                    radius: 0.2,     // Custom radius
                     category: 'small body',
-                    subclass: 'NEO'
+                    subclass: 'NEO'  // Subclass for Near-Earth Objects (NEO)
                 };
-            }).filter(body => body !== null);  // Filter out any invalid bodies
+            }).filter(Boolean);      // Filter out any null entries
 
-            (smallBodiesData);  // Log the transformed small bodies data
+            console.log(`Fetched and validated ${smallBodiesData.length} small bodies.`);
+            console.log(smallBodiesData);
         } else {
-            console.error('API response does not contain expected data structure');
+            console.error('Unexpected API response structure');
         }
     } catch (error) {
         console.error('Error fetching sbdb_data:', error);
     }
 }
 
+// -----------------------------
+// EVENT HANDLING FUNCTIONS
+// -----------------------------
+
+/**
+ * Detects which celestial object, if any, is being hovered over by the mouse.
+ * This function calculates the mouse position, performs a raycasting operation to detect intersections
+ * with celestial objects, and checks if the user is hovering over any object or its label. The function
+ * optimizes performance by avoiding redundant collision detection when the mouse position has not changed.
+ * 
+ * @param {MouseEvent} event - The mouse event triggered by mouse movement.
+ * @returns {Object|null} - The celestial object being hovered over, or `null` if none is detected.
+ * 
+ * Optimizations:
+ * - Collision detection is skipped if the mouse has not moved.
+ * - The result of the last hovered object is cached and returned if the mouse position is unchanged.
+ */
 function getHoveredObject(event) {
     // Calculate mouse position (Normalized Device Coordinates)
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    // Cast a ray from the mouse position to the celestial objects
+    // Check if the mouse has actually moved
+    if (mouse.x === lastMousePosition.x && mouse.y === lastMousePosition.y) {
+        // If mouse hasn't moved, return the last hovered object (if any)
+        return lastHoveredObject;
+    }
+
+    // Update the last mouse position
+    lastMousePosition = { x: mouse.x, y: mouse.y };
+
+    // Cast a ray from the mouse position to the celestial objects and labels
     raycaster.setFromCamera(mouse, camera);
     
-    // Get all celestial objects' mesh elements
+    // Collect all celestial objects' mesh elements
     const meshes = celestialObjects.map(obj => obj.container ? obj.container.children[0] : null).filter(Boolean);
-    const intersects = raycaster.intersectObjects(meshes);
+    const intersects = raycaster.intersectObjects(meshes, true);
 
     // Check if any celestial object is being hovered over
     if (intersects.length > 0) {
         const intersectedObject = intersects[0].object;  // First intersected celestial object
         const intersectedContainer = intersectedObject.parent;  // Get the container of the intersected object
-        return celestialObjects.find(obj => obj.container === intersectedContainer);  // Return the hovered celestial object
-    } else {
-        // If the mouse is not directly hovering over any object, check if it is within a proximity range
-        for (let obj of celestialObjects) {
-            const distance = calculateDistanceToMouse(obj.container);  // Calculate distance to the object
-            const hoverRange = obj.radius * 1.2;  // Proximity range is 1.2 times the object's radius
-            if (distance < hoverRange) {
-                return obj;  // Return the object if the mouse is within the hover range
-            }
-        }
-    }
+        const hoveredObj = celestialObjects.find(obj => obj.container === intersectedContainer);  // Find the corresponding celestial object
+        
+        // Check if the mouse is hovering over a label associated with the object
+        if (hoveredObj && hoveredObj.label && hoveredObj.label.visible) {
+            const labelBounds = hoveredObj.label.element.getBoundingClientRect();  // Get the bounding box of the label
 
-    // Check if the mouse is hovering over a label
-    for (let obj of celestialObjects) {
-        if (obj.label && obj.label.visible) {  // If the label is visible
-            const labelElement = obj.label.element;  // Get the DOM element of the label
-            const labelBounds = labelElement.getBoundingClientRect();  // Get the bounding box of the label
-
-            // Check if the mouse is inside the label's bounding box
             if (event.clientX >= labelBounds.left && event.clientX <= labelBounds.right &&
                 event.clientY >= labelBounds.top && event.clientY <= labelBounds.bottom) {
-                return obj;  // Return the celestial object if the mouse is over its label
+                lastHoveredObject = hoveredObj;  // Update last hovered object
+                return hoveredObj;  // Return the object if the mouse is over its label
             }
         }
+
+        lastHoveredObject = hoveredObj;  // Update last hovered object
+        return hoveredObj;  // Return the celestial object
     }
 
-    return null;  // Return null if no object or label is hovered
+    // Reset last hovered object if no object or label is hovered
+    lastHoveredObject = null;
+    return null;
 }
 
 function onMouseMove(event) {
@@ -153,99 +279,70 @@ function onMouseMove(event) {
 function onMouseClick(event) {
     const selectedObject = getHoveredObject(event);
     if (selectedObject) {
-        showObjectInfo(selectedObject); 
+        alertObjectInfo(selectedObject); 
     }
 }
 
-function calculateDistanceToMouse(container) {
-    // Get world position of the container
-    const containerPosition = new THREE.Vector3();
-
-    // Ensure the container is initialized
-    if (container) {
-        container.getWorldPosition(containerPosition);
-    } else {
-        console.error('Container not initialized');
-        return;
-    }
-    
-    // Create ray from mouse position
-    raycaster.setFromCamera(mouse, camera);
-
-    // Calculate distance from mouse ray to container position
-    return raycaster.ray.distanceToPoint(containerPosition);
-}
-
-async function init() {
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-    camera.position.set(0, 20, 50);
-
-    renderer = new THREE.WebGLRenderer({ antialias: true });
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    document.body.appendChild(renderer.domElement);
-
-    labelRenderer = new THREE.CSS2DRenderer();
     labelRenderer.setSize(window.innerWidth, window.innerHeight);
-    labelRenderer.domElement.style.position = 'absolute';
-    labelRenderer.domElement.style.top = '0px';
-    document.body.appendChild(labelRenderer.domElement);
+}
 
-    controls = new THREE.OrbitControls(camera, labelRenderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.screenSpacePanning = false;
-    controls.minDistance = spaceScale * 0.1;
-    controls.maxDistance = spaceScale * 40;
+// ------------------------------
+// POSITION UPDATE FUNCTIONS
+// ------------------------------
 
-    await fetchSbdbData(); 
+/**
+ * Update the frustum based on the current camera view.
+ * This will be used to check if celestial objects are within the camera's view.
+ * 
+ * @param {THREE.Camera} camera - The camera used for rendering the scene.
+ */
+function updateFrustum(camera) {
+    camera.updateMatrixWorld(); // Ensure the camera matrices are up to date
+    cameraViewProjectionMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    frustum.setFromProjectionMatrix(cameraViewProjectionMatrix);  // Set frustum from camera's view projection matrix
+}
 
-    backgroundSphere = sb.createBackground(scene, 1200, TEXTURES['MILKY_WAY']);
-    axesArrows = sb.addAxesArrows(scene);
-    eclipticPlane = sb.addEclipticPlane(scene);
+/**
+ * Check if a celestial object is within the camera's frustum (view).
+ * 
+ * @param {THREE.Object3D} object - The 3D object representing the celestial body.
+ * @returns {boolean} - True if the object is within the camera's view, false otherwise.
+ */
+function isInView(object) {
+    const boundingBox = new THREE.Box3().setFromObject(object);  // Get the object's bounding box
+    return frustum.intersectsBox(boundingBox);  // Check if the bounding box intersects with the frustum
+}
 
-    sb.addLight(scene, 'sun', { intensity: 1, range: 1000 });
-    sb.addLight(scene, 'ambient', { intensity: 0.05 });
+/**
+ * Update the positions of all celestial objects, but only if they are within the camera's view.
+ * This optimizes the performance by avoiding unnecessary updates for off-screen objects.
+ * 
+ * @param {THREE.Camera} camera - The camera used for rendering the scene.
+ */
+function updatePositions(camera) {
+    const currentJulianDate = calculateJulianDate(currentDate);
+    
+    // Update frustum to reflect the current camera view
+    updateFrustum(camera);
 
-    sun = new sb.CelestialBody(scene, sunData, TEXTURES);
-    celestialObjects.push(sun);
+    celestialObjects.forEach(object => {
+        // Skip position updates for the Sun
+        if (object.name === 'Sun') return;
 
-    //[...planetsData, ...smallBodiesData]
-    planetsData.forEach(data => {
-        const celestialBody = new sb.CelestialBody(scene, data, TEXTURES);
-        celestialObjects.push(celestialBody);
+        // Only update positions if the object is within the camera's view
+        if (isInView(object.container)) {
+            updateObjectPosition(object, currentJulianDate);
+        }
     });
-
-    console.log('Number of celestial objects: ' + celestialObjects.length);
-    console.log(celestialObjects);
-    // celestialObjects.forEach(object => { console.log(object.name) });
-
-    cl.init(controls);
-    setupUIControls(celestialObjects);
-    setupTimeControls();
-
-    window.addEventListener('resize', onWindowResize, false);
-    window.addEventListener('click', onMouseClick, false);
-    window.addEventListener('mousemove', onMouseMove, false);
-
-    animate(); 
-
-    // Time Control
-    const timeControl = document.getElementById('timeControl');
-    timeControl.addEventListener('mouseenter', () => { controls.enabled = false });
-    timeControl.addEventListener('mouseleave', () => { controls.enabled = true });
 }
 
-function showObjectInfo(object) {
-    const additionalInfo = (object.name.toUpperCase() === 'SUN') ? '' : `
-   Semi-major axis = ${object.orbitalElements.a.toFixed(2)} AU
-   Perihelion = ${object.orbitalElements.q.toFixed(2)} AU
-   Eccentricity = ${object.orbitalElements.e.toFixed(2)}
-   Period = ${object.period.toFixed(2)} yr`;
-    alert(`This is ${object.name}!` + additionalInfo);
-}
+// -------------------------
+// UI CONTROL FUNCTION 
+// -------------------------
 
 function setupUIControls(celestialObjects) {
     const showOrbitsCheckbox = document.getElementById('showOrbits');
@@ -281,16 +378,6 @@ function setupUIControls(celestialObjects) {
 
     // Toggle visibility of swept areas
     showSweptAreaCheckbox.addEventListener('change', (event) => {
-      celestialObjects.forEach(obj => {
-        if(obj.sweptAreas) {
-          obj.sweptAreas.forEach(area => {
-            area.visible = event.target.checked;
-          });
-        }
-      });
-    });
-
-    showSweptAreaCheckbox.addEventListener('change', (event) => {
         celestialObjects.forEach(obj => {
             if(obj.sweptAreaGroup) {
                 obj.sweptAreaGroup.visible = event.target.checked;
@@ -300,13 +387,9 @@ function setupUIControls(celestialObjects) {
 
 }
 
-// Update button icon and title
-function updateButton(button, condition, titleTrue, titleFalse, iconTrue, iconFalse) {
-    button.title = condition ? titleTrue : titleFalse;
-    if (iconTrue && iconFalse) {
-        button.innerHTML = condition ? iconTrue : iconFalse;
-    }
-}
+// ---------------------------
+// TIME CONTROL FUNCTIONS  
+// ---------------------------
 
 function setupTimeControls() {
     const playPauseButton = document.getElementById('playPause');
@@ -345,14 +428,14 @@ function setupTimeControls() {
         currentDate.setTime(new Date(Date.UTC(2000, 0, 1, 12, 0, 0)));
         console.log(currentDate);
         updateDateDisplay();
-        updatePositions();
+        updatePositions(camera);
     });
 
     goToTodayButton.addEventListener('click', () => {
         currentDate.setTime(new Date());
         console.log(currentDate);
         updateDateDisplay();
-        updatePositions();
+        updatePositions(camera);
     });
 
     speedSlider.addEventListener('input', () => {
@@ -382,25 +465,41 @@ function setupTimeControls() {
     updateDateDisplay();
 }
 
-function formatDate(date) {
-    return date.toISOString().split('T')[0];
+function updateButton(button, condition, titleTrue, titleFalse, iconTrue, iconFalse) {
+    button.title = condition ? titleTrue : titleFalse;
+    if (iconTrue && iconFalse) {
+        button.innerHTML = condition ? iconTrue : iconFalse;
+    }
 }
 
-export function calculateJulianDate(date) {
+function updateDateDisplay() {
+    const formattedDate = currentDate.toISOString().split('T')[0];
+    const currentJulianDate = calculateJulianDate(currentDate).toFixed(2);
+
+    document.getElementById('currentDateDisplay').textContent = formattedDate;
+    document.getElementById('julianDateDisplay').textContent = `JD: ${currentJulianDate}`;
+}
+
+function calculateJulianDate(date) {
     return (date.getTime() / 86400000) + 2440587.5;
 }
 
-export function updateDateDisplay() {
-    document.getElementById('currentDateDisplay').textContent = formatDate(currentDate);
-    document.getElementById('julianDateDisplay').textContent = `JD: ${calculateJulianDate(currentDate).toFixed(2)}`;
+// --------------------------
+// FUNCTION(S) FOR SCAFFOLDING
+// --------------------------
+
+function alertObjectInfo(object) {
+    const additionalInfo = (object.name.toUpperCase() === 'SUN') ? '' : `
+   Semi-major axis = ${object.orbitalElements.a.toFixed(2)} AU
+   Perihelion = ${object.orbitalElements.q.toFixed(2)} AU
+   Eccentricity = ${object.orbitalElements.e.toFixed(2)}
+   Period = ${object.period.toFixed(2)} yr`;
+    alert(`This is ${object.name}!` + additionalInfo);
 }
 
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    labelRenderer.setSize(window.innerWidth, window.innerHeight);
-}
+// --------------------------------
+// ANIMATION CONTROL FUNCTIONS 
+// --------------------------------
 
 function animate() {
     requestAnimationFrame(animate);
@@ -421,21 +520,12 @@ function animate() {
         }
     
         updateDateDisplay();
-        updatePositions();
+        updatePositions(camera);
     }
 
     controls.update();
     renderer.render(scene, camera);
     labelRenderer.render(scene, camera);
-}
-
-function updatePositions() {
-    const currentJulianDate = calculateJulianDate(currentDate);
-    celestialObjects.forEach(object => {
-        if (object.name != 'Sun') {
-            updateObjectPosition(object, currentJulianDate);
-        }
-    });
 }
 
 init();

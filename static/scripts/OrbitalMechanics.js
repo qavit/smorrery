@@ -23,14 +23,12 @@
  *   and orbital elements are necessary, particularly in 3D visualization frameworks like Three.js.
  */
 
-
 import { J2000, mu, spaceScale } from './Resources.js';
 import { printQuantity } from './Tools.js';
 import { createSweptArea } from './Education.js';
 
-let previousSweptAreaPhase = null
-const phaseNumber = 8;
-
+let previousSweptAreaPhase = null 
+const phaseNumber = 8; // how many phases in one cycle
 
 /**
  * Update the mean anomaly over time based on the mean motion and the given period.
@@ -48,7 +46,6 @@ function updateMeanAnomaly(T, M, time) {
     return newM % (2 * Math.PI);  // Ensure M is within [0, 2π)
 }
 
-
 /**
  * Calculate the true anomaly from the eccentricity and eccentric anomaly.
  * The true anomaly represents the angle between the direction of periapsis and the current position of the body on its orbit.
@@ -65,7 +62,6 @@ function calcTrueAnomaly(e, E) {
         Math.sqrt(1 - e) * Math.cos(E / 2)
     );
 }
-
 
 /**
  * Solve Kepler's equation using the Newton-Raphson method.
@@ -90,7 +86,6 @@ function solveKeplerEquation(e, M) {
 
     return E;  // Return the computed eccentric anomaly
 }
-
 
 /**
  * Get the orbital rotation matrix for transforming orbital coordinates to 3D space.
@@ -122,7 +117,6 @@ function getOrbitalRotationMatrix(i, Omega, w) {
     return rotationMatrix;
 }
 
-
 /**
  * Apply an orbital rotation to the orbit container.
  * This function transforms the orbit container based on the inclination (i), 
@@ -137,7 +131,6 @@ export function rotateOrbit(orbitContainer, i, Omega, w) {
     const rotationMatrix = getOrbitalRotationMatrix(i, Omega, w);
     orbitContainer.applyMatrix4(rotationMatrix);
 }
-
 
 /**
  * Update the position of the celestial object based on its orbital elements.
@@ -188,7 +181,6 @@ export function updateObjectPosition(object, currentJulianDate) {
         previousSweptAreaPhase = sweptAreaPhase;
     }
 }
-
 
 /**
  * Determine orbital elements based on orbital state vectors (position and velocity.)
