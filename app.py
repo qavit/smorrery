@@ -56,6 +56,39 @@ def sbdb_query():
     else:
         print(f"Error {response.status_code}: {response.text}")
         return jsonify({"error": "Unable to fetch data", "details": response.text}), response.status_code
+    
+@app.route('/api/sbdb_CA_query')
+def sbdb_CA_query():
+    global sbdb_CA_data
+    date_min = request.args.get('date-min', '2023-10-10') 
+    date_max = request.args.get('date-max', '2025-10-10') 
+    dist_max = request.args.get('dist-max', '0.05') 
+
+    api_url = 'https://ssd-api.jpl.nasa.gov/cad.api'
+    params = {
+        'date-min': date_min,
+        'date-max': date_max,
+        'dist-max': dist_max
+    }
+    response = requests.get(api_url, params=params)
+    
+    if response.status_code == 200:
+        data = response.json()
+        sbdb_CA_data = []
+        for item in data.get("data", []):
+            sbdb_CA_data.append({
+                "des": item[0],     
+                "cd": item[3],      
+                "dist": item[4]    
+            })
+        
+        with open('neoCA.json', 'w') as f:
+            json.dump(sbdb_CA_data, f, indent=4)
+        
+        return jsonify(sbdb_CA_data)
+    else:
+        return jsonify({"error": "Unable to fetch data", "details": response.text}), response.status_code
+
 
 
 # Route: Render the front-end HTML
