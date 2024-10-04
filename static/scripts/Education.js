@@ -1,7 +1,4 @@
-let color_flag = true;
 let previousPoint = null; // Global variable to store the previous point
-
-// export const EARTH_SIDEREAL_YEAR = 365.256363004 * 86400 * 1000; // https://hpiers.obspm.fr/eop-pc/models/constants.html
 
 export function createSweptArea(object, point, sweptAreaPhase) {
     // Return early if this is the first point (no previous point available)

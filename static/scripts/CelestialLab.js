@@ -1,6 +1,6 @@
 import { spaceScale, planetsData } from './Resources.js';
 import { scene, celestialObjects } from './orrery.js';
-import { calcOrbitalElements } from './OrbitalMechanics.js';
+import { determinOrbit } from './OrbitalMechanics.js';
 import * as sb from './SceneBuilder.js';
 
 const toggleLabButton = document.getElementById('lab-toggle-panel');
@@ -35,17 +35,12 @@ export function init(controls) {
     labDrawButton.disabled = true
 
     labLaunchButton.addEventListener('click', () => {
-        toggleLabLaunchRemove();
-        if (isLaunched) {
-            labDrawButton.disabled = false; // enable labDrawButton
-        } else {
-            labDrawButton.disabled = true;  // disable labDrawButton
-        }
+        toggleAsteroidState();
     });
 
     labDrawButton.addEventListener('click', () => {
         if (!labDrawButton.disabled) {      // if enabled
-            toggleLabDrawClear();  
+            toggleDrawing();  
         }
     });
 
@@ -55,38 +50,42 @@ export function init(controls) {
     });
 }
 
-function toggleLabLaunchRemove() {
+function toggleAsteroidState() {
+    // Toggle the state of the asteroid, both for launch and draw/erase
     if (!isLaunched) {
+        // Launch the asteroid if it hasn't been launched yet
         confirmAsteroidParams();
         isDrawn = true;
         console.log('Your artificial asteroid is launched.');
-        console.log('Number of celestial objects :', celestialObjects.length);
         labLaunchButton.textContent = "Remove";
-        labDrawButton.textContent = 'Erase';
-        
+        labDrawButton.textContent = "Erase";
+        labDrawButton.disabled = false; // Enable drawing functionality
     } else {
-        asteroidVisualObjects.forEach(obj => {obj.visible = false});
+        // Remove the asteroid and reset its state
+        asteroidVisualObjects.forEach(obj => { obj.visible = false });
         asteroidVisualObjects = [];
         for (let i = celestialObjects.length - 1; i >= 0; i--) {
             if (celestialObjects[i].subclass === 'artificial') {
-                celestialObjects.splice(i, 1);  // Remove the item from the array
+                celestialObjects.splice(i, 1);  // Remove from celestialObjects array
             }
         }
         asteroidCounter = 0;
         isDrawn = false;
         console.log('Your artificial asteroid is removed.');
-        console.log('Number of celestial objects :', celestialObjects.length);
-        labLaunchButton.textContent = 'Launch';
+        labLaunchButton.textContent = "Launch";
         labDrawButton.textContent = "Draw";
+        labDrawButton.disabled = true; // Disable drawing functionality when no asteroid exists
     }
-    
-    isLaunched = !isLaunched;
+    isLaunched = !isLaunched;  // Toggle launch state
 }
 
-function toggleLabDrawClear() {
-    isDrawn = !isDrawn;
-    asteroidVisualObjects.forEach(obj => {obj.visible = isDrawn});
-    labDrawButton.textContent = isDrawn ? "Erase" : "Draw";
+// Function to toggle drawing state
+function toggleDrawing() {
+    if (isLaunched) {
+        isDrawn = !isDrawn;  // Toggle draw state
+        asteroidVisualObjects.forEach(obj => { obj.visible = isDrawn });
+        labDrawButton.textContent = isDrawn ? "Erase" : "Draw";
+    }
 }
 
 function confirmAsteroidParams() {
@@ -116,7 +115,7 @@ function confirmAsteroidParams() {
         myName = `My Asteroid ${asteroidCounter.toString().padStart(3, '0')}`;  
     }
 
-    const orbitalElements = calcOrbitalElements(initialPosition, initialVelocity);
+    const orbitalElements = determinOrbit(initialPosition, initialVelocity);
 
     const asteroidData = {
         name: myName,
