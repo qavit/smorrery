@@ -230,7 +230,6 @@ export class CelestialBody {
         this.container.add(ring);
     }
 
-
     /**
      * Create an orbit based on the object's orbital elements.
      * This function generates points along the orbit path (elliptical, parabolic, or hyperbolic)

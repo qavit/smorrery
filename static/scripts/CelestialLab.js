@@ -1,6 +1,6 @@
 import { spaceScale, planetsData } from './Resources.js';
 import { scene, celestialObjects } from './orrery.js';
-import { determinOrbit } from './OrbitalMechanics.js';
+import { determineOrbit } from './OrbitalMechanics.js';
 import * as sb from './SceneBuilder.js';
 
 const toggleLabButton = document.getElementById('lab-toggle-panel');
@@ -115,7 +115,7 @@ function confirmAsteroidParams() {
         myName = `My Asteroid ${asteroidCounter.toString().padStart(3, '0')}`;  
     }
 
-    const orbitalElements = determinOrbit(initialPosition, initialVelocity);
+    const orbitalElements = determineOrbit(initialPosition, initialVelocity);
 
     const asteroidData = {
         name: myName,

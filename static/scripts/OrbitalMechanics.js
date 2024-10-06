@@ -194,7 +194,7 @@ export function updateObjectPosition(object, currentJulianDate) {
  *                     eccentricity (e), inclination (i), and others.
  * @see https://en.wikipedia.org/wiki/Orbit_determination#Orbit_determination_from_a_state_vector
  */
-export function determinOrbit(position, velocity, verbose = true) {
+export function determineOrbit(position, velocity, verbose = true) {
     // Compute magnitudes of position and velocity vectors
     const posMag = position.length();
     const velMag = velocity.length();
